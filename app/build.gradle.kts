@@ -40,6 +40,12 @@ android {
         compose = true
     }
 
+    sourceSets {
+        // Test helpers shared by JVM and instrumented tests.
+        getByName("test").kotlin.directories.add("src/sharedTest/java")
+        getByName("androidTest").kotlin.directories.add("src/sharedTest/java")
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
