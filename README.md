@@ -29,7 +29,7 @@ Lo script esegue i test JVM e, se necessario, avvia l'emulatore headless e lanci
 .\scripts\run-tests.ps1 -Avd Pixel_8  # usa un altro AVD
 ```
 
-Lo script imposta `JAVA_HOME` sulla JBR di Android Studio (se non e' gia' impostato su un JDK valido), termina con codice diverso da zero se un test fallisce e stampa i percorsi dei report HTML.
+Lo script imposta `JAVA_HOME` sulla JBR di Android Studio (se Android Studio non è installato usa il `JAVA_HOME` esistente), termina con codice diverso da zero se un test fallisce e stampa i percorsi dei report HTML.
 
 Comandi Gradle diretti:
 
