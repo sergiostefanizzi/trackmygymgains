@@ -35,4 +35,4 @@ google-services.json
 *.hprof
 
 # References
-.references/
+references/
