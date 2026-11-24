@@ -5,7 +5,7 @@
     <!-- Import -->
     <string name="import_title">Importa scheda</string>
     <string name="import_back">Indietro</string>
-    <string name="import_intro">Carica la tua scheda di allenamento in formato .xlsx. Vengono importati i giorni con esercizi, serie, ripetizioni target, RIR, recuperi e note del foglio scelto (di default il primo).</string>
+    <string name="import_intro">Carica la tua scheda di allenamento: vanno bene file .xlsx e Fogli Google di Drive. Vengono importati i giorni con esercizi, serie, ripetizioni target, RIR, recuperi e note del foglio scelto (di default il primo).</string>
     <string name="import_pick_file">Scegli file .xlsx</string>
     <string name="import_pick_other_file">Scegli un altro file</string>
     <string name="import_loading">Lettura del file…</string>

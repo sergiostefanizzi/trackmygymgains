@@ -154,6 +154,7 @@ class ImportViewModel(
         is PlanFileException -> when (e.reason) {
             PlanFileException.Reason.TOO_BIG -> ImportMessages.TOO_BIG
             PlanFileException.Reason.UNREADABLE -> ImportMessages.UNREADABLE
+            PlanFileException.Reason.UNSUPPORTED_GOOGLE_FILE -> ImportMessages.UNSUPPORTED_GOOGLE_FILE
         }
         is XlsxException.NotAnXlsx -> ImportMessages.NOT_XLSX
         is XlsxException -> ImportMessages.CORRUPTED

@@ -67,6 +67,8 @@ private val XLSX_MIME_TYPES = arrayOf(
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     // Some document providers report generic binary content for xlsx files; content is validated anyway.
     "application/octet-stream",
+    // Google Sheets in Drive are virtual documents, exported to xlsx by the reader.
+    "application/vnd.google-apps.spreadsheet",
 )
 
 /** Stateful wrapper: wires the ViewModel, the SAF picker and navigation callbacks. */

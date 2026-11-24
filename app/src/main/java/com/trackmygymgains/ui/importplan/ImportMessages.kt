@@ -6,6 +6,8 @@ internal object ImportMessages {
     const val CORRUPTED = "Il file sembra danneggiato e non può essere letto. Prova con un altro file."
     const val TOO_BIG = "Il file è troppo grande (massimo 15 MB). Scegli un altro file."
     const val UNREADABLE = "Impossibile leggere il file selezionato. Riprova o scegli un altro file."
+    const val UNSUPPORTED_GOOGLE_FILE =
+        "Questo file Google non può essere convertito in .xlsx. Aprilo in Fogli Google e scaricalo come .xlsx (File › Scarica › Microsoft Excel)."
     const val SHEET_UNREADABLE = "Questo foglio non può essere letto. Prova a sceglierne un altro."
     const val SAVE_FAILED = "Impossibile salvare la scheda. Riprova."
 }

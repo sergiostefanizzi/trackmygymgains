@@ -156,6 +156,10 @@ class ImportViewModelTest {
         val vm3 = vm(FakeReader { throw IllegalStateException("boom") })
         vm3.onFilePicked("content://x")
         assertEquals(ImportUiState.Error(ImportMessages.UNREADABLE), vm3.state.value)
+
+        val vm4 = vm(FakeReader { throw PlanFileException(PlanFileException.Reason.UNSUPPORTED_GOOGLE_FILE) })
+        vm4.onFilePicked("content://x")
+        assertEquals(ImportUiState.Error(ImportMessages.UNSUPPORTED_GOOGLE_FILE), vm4.state.value)
     }
 
     @Test
