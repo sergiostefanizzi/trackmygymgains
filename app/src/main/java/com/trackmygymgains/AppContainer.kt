@@ -6,6 +6,7 @@ import com.trackmygymgains.data.db.AppDatabase
 import com.trackmygymgains.data.file.ContentResolverPlanFileReader
 import com.trackmygymgains.data.file.PlanFileReader
 import com.trackmygymgains.data.repo.PlanRepository
+import com.trackmygymgains.data.repo.SessionRepository
 
 /**
  * Manual dependency container: owns the database and repositories. Everything is created lazily.
@@ -22,6 +23,8 @@ class AppContainer(
     val database: AppDatabase by lazy { databaseFactory(appContext) }
 
     val planRepository: PlanRepository by lazy { PlanRepository(database) }
+
+    val sessionRepository: SessionRepository by lazy { SessionRepository(database) }
 
     val planFileReader: PlanFileReader by lazy { ContentResolverPlanFileReader(appContext) }
 }

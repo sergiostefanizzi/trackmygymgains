@@ -44,6 +44,8 @@ android {
         // Test helpers shared by JVM and instrumented tests.
         getByName("test").kotlin.directories.add("src/sharedTest/java")
         getByName("androidTest").kotlin.directories.add("src/sharedTest/java")
+        // Exported Room schemas, read by MigrationTestHelper from the test assets.
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
     }
 
     testOptions {
@@ -55,6 +57,19 @@ android {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// room-testing's MigrationTestHelper (room-migration) is built against kotlinx-serialization 1.8.x, but the
+// AndroidX platform pins 1.7.3 on the instrumented classpath, which fails at runtime with AbstractMethodError.
+configurations.configureEach {
+    if (name.contains("AndroidTest", ignoreCase = true)) {
+        resolutionStrategy.force(
+            "org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1",
+            "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.8.1",
+            "org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1",
+            "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.1",
+        )
+    }
 }
 
 dependencies {
@@ -90,4 +105,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.room.testing)
 }

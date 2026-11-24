@@ -16,23 +16,29 @@ import org.junit.runners.model.Statement
  * Installs an [AppContainer] backed by an in-memory database before the activity starts, so tests do not
  * depend on the device database. Use it as the OUTER rule of a RuleChain around the compose rule.
  * [seedPlan], when given, is imported as the active plan.
+ * [container] exposes the installed container (all repositories, e.g. sessionRepository) while the test runs.
  */
 class InMemoryContainerRule(private val seedPlan: ParsedPlan? = null) : TestRule {
+    var container: AppContainer? = null
+        private set
+
     override fun apply(base: Statement, description: Description): Statement = object : Statement() {
         override fun evaluate() {
             val app = ApplicationProvider.getApplicationContext<Context>() as TrackMyGymGainsApp
-            val container = AppContainer(app) { ctx ->
+            val installed = AppContainer(app) { ctx ->
                 Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java).build()
             }
-            app.setContainerForTesting(container)
+            app.setContainerForTesting(installed)
+            container = installed
             try {
                 if (seedPlan != null) {
-                    runBlocking { container.planRepository.importPlan(seedPlan, "scheda.xlsx") }
+                    runBlocking { installed.planRepository.importPlan(seedPlan, "scheda.xlsx") }
                 }
                 base.evaluate()
             } finally {
                 app.setContainerForTesting(null)
-                container.database.close()
+                container = null
+                installed.database.close()
             }
         }
     }
