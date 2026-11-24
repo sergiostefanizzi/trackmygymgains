@@ -1,5 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TrackMyGymGains</string>
-    <string name="home_welcome">Benvenuto in TrackMyGymGains</string>
+
+    <!-- Import -->
+    <string name="import_title">Importa scheda</string>
+    <string name="import_back">Indietro</string>
+    <string name="import_intro">Carica la tua scheda di allenamento in formato .xlsx. Vengono importati i giorni con esercizi, serie, ripetizioni target, RIR, recuperi e note del foglio scelto (di default il primo).</string>
+    <string name="import_pick_file">Scegli file .xlsx</string>
+    <string name="import_pick_other_file">Scegli un altro file</string>
+    <string name="import_loading">Lettura del file…</string>
+    <string name="import_file_name">File: %1$s</string>
+    <string name="import_sheet_label">Foglio</string>
+    <string name="import_confirm">Importa scheda</string>
+    <string name="import_confirm_replace">Importa e sostituisci scheda attuale</string>
+    <string name="import_replace_hint">La nuova scheda diventerà quella attiva. La scheda attuale resta salvata ma non verrà più usata.</string>
+    <string name="import_warnings_title">Avvisi (%1$d)</string>
+    <string name="import_warning_row">Riga %1$d: %2$s</string>
+    <string name="import_importing">Importazione in corso…</string>
+
+    <!-- Exercise details -->
+    <string name="exercise_sets_reps">%1$d × %2$s</string>
+    <string name="exercise_sets_only">%1$d serie</string>
+    <string name="exercise_rir">RIR %1$s</string>
+    <string name="exercise_rest">Recupero %1$s</string>
+    <string name="exercise_no_rest">Nessun recupero</string>
+    <plurals name="exercises_count">
+        <item quantity="one">%1$d esercizio</item>
+        <item quantity="other">%1$d esercizi</item>
+    </plurals>
+
+    <!-- Home -->
+    <string name="home_menu">Altre opzioni</string>
+    <string name="home_import_new">Importa nuova scheda</string>
+    <string name="home_day_summary">%1$s · %2$s</string>
 </resources>
