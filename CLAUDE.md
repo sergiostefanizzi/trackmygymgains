@@ -34,7 +34,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 
 ## Architecture (target design)
 
-Single `:app` module, package `com.trackmygymgains`. Manual DI: `TrackMyGymGainsApp` exposes a lazy `AppContainer` that will own the Room database and repositories (no Hilt). Screens are Compose + ViewModel exposing `StateFlow`, wired with Navigation Compose.
+Single `:app` module, package `com.trackmygymgains`. Manual DI: `TrackMyGymGainsApp.container` is an `AppContainer` owning the Room DB, repositories and `PlanFileReader` (no Hilt). Tests swap it via `setContainerForTesting`, normally through the `sharedTest` `InMemoryContainerRule` (in-memory DB, optionally seeded with the reference plan) used as the outer rule before the activity starts. Screens are Compose + ViewModel exposing `StateFlow`, wired with Navigation Compose.
 
 Planned layers:
 - `data/xlsx/` — `XlsxReader` (custom reader on `java.util.zip` + `javax.xml`, **no Apache POI**, so it runs identically in plain JVM tests) → cell grid; `WorkoutPlanParser` → days and exercises.
