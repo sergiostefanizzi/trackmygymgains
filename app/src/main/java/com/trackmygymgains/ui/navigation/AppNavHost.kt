@@ -21,6 +21,8 @@ import androidx.navigation.navArgument
 import com.trackmygymgains.TrackMyGymGainsApp
 import com.trackmygymgains.ui.home.HomeRoute
 import com.trackmygymgains.ui.importplan.ImportRoute
+import com.trackmygymgains.ui.summary.SummaryRoute
+import com.trackmygymgains.ui.summary.SummaryViewModel
 import com.trackmygymgains.ui.workout.WorkoutRoute
 import com.trackmygymgains.ui.workout.WorkoutViewModel
 import kotlinx.coroutines.flow.first
@@ -29,8 +31,11 @@ object Routes {
     const val IMPORT = "import"
     const val HOME = "home"
     const val WORKOUT = "workout/{${WorkoutViewModel.SESSION_ID_ARG}}"
+    const val SUMMARY = "summary/{${SummaryViewModel.SESSION_ID_ARG}}"
 
     fun workout(sessionId: Long) = "workout/$sessionId"
+
+    fun summary(sessionId: Long) = "summary/$sessionId"
 }
 
 const val START_LOADING_TAG = "start_loading"
@@ -80,7 +85,29 @@ fun AppNavHost() {
             route = Routes.WORKOUT,
             arguments = listOf(navArgument(WorkoutViewModel.SESSION_ID_ARG) { type = NavType.LongType }),
         ) {
-            WorkoutRoute(onBack = { navController.popBackStack() })
+            WorkoutRoute(
+                onBack = { navController.popBackStack() },
+                onFinished = { sessionId ->
+                    // Drop the finished workout so back from the summary goes to home.
+                    navController.navigate(Routes.summary(sessionId)) {
+                        popUpTo(Routes.HOME)
+                    }
+                },
+            )
+        }
+        composable(
+            route = Routes.SUMMARY,
+            arguments = listOf(navArgument(SummaryViewModel.SESSION_ID_ARG) { type = NavType.LongType }),
+        ) {
+            SummaryRoute(
+                onHome = {
+                    if (!navController.popBackStack(Routes.HOME, inclusive = false)) {
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                        }
+                    }
+                },
+            )
         }
     }
 }

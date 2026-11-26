@@ -12,6 +12,8 @@ import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.PlannedExercise
 import com.trackmygymgains.data.repo.SessionRepository
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -42,7 +45,13 @@ sealed interface WorkoutUiState {
     data object NotFound : WorkoutUiState
 
     /** [dayName] is the name of the session's day (empty if the day no longer exists). */
-    data class Ready(val dayName: String, val exercises: List<ExerciseUi>) : WorkoutUiState
+    data class Ready(val dayName: String, val exercises: List<ExerciseUi>) : WorkoutUiState {
+        /** Sets planned by the day (sum over its exercises). */
+        val plannedSets: Int get() = exercises.sumOf { it.exercise.sets }
+
+        /** Sets logged so far in the session. */
+        val doneSets: Int get() = exercises.sumOf { it.loggedSets.size }
+    }
 }
 
 class WorkoutViewModel(
@@ -53,6 +62,14 @@ class WorkoutViewModel(
 
     /** exerciseId -> set number open for editing. */
     private val editing = MutableStateFlow<Map<Long, Int>>(emptyMap())
+
+    private val finished = Channel<Long>(Channel.BUFFERED)
+
+    /** Id of the session once it has been finished; the route navigates to the summary once per emission. */
+    val sessionFinished: Flow<Long> = finished.receiveAsFlow()
+
+    /** Set to true on the first finish request so a double tap does not emit twice. */
+    private var finishRequested = false
 
     val state: StateFlow<WorkoutUiState> = flow {
         val first = sessionRepository.observeSession(sessionId).first()
@@ -115,6 +132,16 @@ class WorkoutViewModel(
 
     fun cancelEdit(plannedExerciseId: Long) {
         editing.update { it - plannedExerciseId }
+    }
+
+    /** "Termina allenamento": marks the session as ended and emits its id for navigation. */
+    fun finishWorkout() {
+        if (finishRequested) return
+        finishRequested = true
+        viewModelScope.launch {
+            sessionRepository.finishSession(sessionId)
+            finished.send(sessionId)
+        }
     }
 
     companion object {

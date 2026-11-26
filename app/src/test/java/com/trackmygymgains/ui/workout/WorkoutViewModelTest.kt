@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -155,6 +156,18 @@ class WorkoutViewModelTest {
         val next = ready(vm) { it.exercises.first().currentSet == 2 }
         // previous set in this session wins over last performance set 2
         assertEquals(SetFormValues("11", "6", SetOutcome.BUFFER, 1), next.exercises.first().currentForm)
+    }
+
+    @Test
+    fun finishingClosesSessionAndEmitsItsId() = runTest {
+        val sessionId = sessions.startSession(dayId)
+        val vm = WorkoutViewModel(sessionId, sessions, plans)
+
+        vm.finishWorkout()
+
+        assertEquals(sessionId, vm.sessionFinished.first())
+        assertNull(sessions.getOpenSession())
+        assertNotNull(sessions.observeSession(sessionId).first()!!.endedAt)
     }
 
     @Test

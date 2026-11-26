@@ -70,4 +70,20 @@
     <string name="workout_error_load_range">Massimo 1000 kg</string>
     <string name="workout_error_reps_range">Da 1 a 999 ripetizioni</string>
     <string name="workout_not_found">Allenamento non trovato</string>
+    <string name="workout_finish">Termina allenamento</string>
+    <string name="workout_finish_dialog_title">Terminare l\'allenamento?</string>
+    <string name="workout_finish_dialog_missing">Hai completato %1$d serie su %2$d. Vuoi terminare l\'allenamento?</string>
+    <string name="workout_finish_dialog_complete">Hai completato tutte le serie. Vuoi terminare l\'allenamento?</string>
+    <string name="workout_finish_confirm">Termina</string>
+    <string name="workout_finish_dismiss">Continua</string>
+
+    <!-- Summary -->
+    <string name="summary_title">Riepilogo allenamento</string>
+    <string name="summary_not_found">Riepilogo non disponibile</string>
+    <string name="summary_duration">Durata: %1$s</string>
+    <string name="summary_sets_done">%1$d/%2$d serie</string>
+    <string name="summary_no_sets">Nessuna serie registrata</string>
+    <string name="summary_set_buffer">%1$s kg × %2$d · Buffer RIR %3$d</string>
+    <string name="summary_set_failure">%1$s kg × %2$d · Cedimento</string>
+    <string name="summary_home">Torna alla home</string>
 </resources>

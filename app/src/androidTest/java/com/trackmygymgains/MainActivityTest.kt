@@ -11,7 +11,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
+import com.trackmygymgains.ui.summary.SummaryTags
 import com.trackmygymgains.ui.workout.WorkoutTags
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -98,6 +101,39 @@ class MainActivityWithPlanTest {
         waitForTag(HomeTags.CANCEL_SESSION)
         composeRule.onNodeWithTag(HomeTags.CANCEL_SESSION).performClick()
         composeRule.onNodeWithTag(HomeTags.CANCEL_CONFIRM).performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag(HomeTags.OPEN_SESSION)).fetchSemanticsNodes().isEmpty()
+        }
+        composeRule.onAllNodesWithText(start).onFirst().assertIsEnabled()
+    }
+
+    @Test
+    fun finishWorkoutShowsSummaryAndBackToHomeClosesSession() {
+        val start = context.getString(R.string.home_start_workout)
+        val totalSets = referencePlanExpected.first().exercises.sumOf { it.sets }
+
+        waitForText("FULL BODY 1 · 7 esercizi")
+        composeRule.onAllNodesWithText(start).onFirst().performClick()
+        waitForText("PULL UP")
+
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.LOAD_FIELD)).onFirst().performTextInput("80")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.REPS_FIELD)).onFirst().performTextInput("8")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.SUBMIT)).onFirst().performClick()
+        waitForText("1 · 80 kg × 8 · Buffer RIR 1")
+
+        // The finish button is the item after the 7 exercise cards; lazy items are not composed until scrolled.
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(referencePlanExpected.first().exercises.size)
+        composeRule.onNodeWithTag(WorkoutTags.FINISH).performClick()
+        composeRule.onNodeWithTag(WorkoutTags.FINISH_CONFIRM).performClick()
+
+        waitForTag(SummaryTags.HOME)
+        composeRule.onNodeWithText("1/$totalSets serie").assertIsDisplayed()
+
+        // Summary list: header, one card per exercise, then the home button.
+        composeRule.onNode(hasScrollToIndexAction())
+            .performScrollToIndex(referencePlanExpected.first().exercises.size + 1)
+        composeRule.onNodeWithTag(SummaryTags.HOME).performClick()
+        waitForText("FULL BODY 1 · 7 esercizi")
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodes(hasTestTag(HomeTags.OPEN_SESSION)).fetchSemanticsNodes().isEmpty()
         }

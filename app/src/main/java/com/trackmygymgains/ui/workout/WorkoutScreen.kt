@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,10 +30,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,21 +64,30 @@ object WorkoutTags {
     const val CANCEL_EDIT = "workout_cancel_edit"
     const val SET_SUMMARY = "workout_set_summary"
     const val EXERCISE_CARD = "workout_exercise_card"
+    const val FINISH = "workout_finish"
+    const val FINISH_DIALOG_TEXT = "workout_finish_dialog_text"
+    const val FINISH_CONFIRM = "workout_finish_confirm"
+    const val FINISH_DISMISS = "workout_finish_dismiss"
 }
 
 /** Stateful wrapper around [WorkoutScreen]. The session id comes from the navigation argument. */
 @Composable
 fun WorkoutRoute(
     onBack: () -> Unit,
+    onFinished: (sessionId: Long) -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.sessionFinished.collect { onFinished(it) }
+    }
     WorkoutScreen(
         state = state,
         onBack = onBack,
         onSubmitSet = viewModel::completeSet,
         onEditSet = viewModel::startEdit,
         onCancelEdit = viewModel::cancelEdit,
+        onFinish = viewModel::finishWorkout,
     )
 }
 
@@ -88,7 +100,9 @@ fun WorkoutScreen(
         { _, _, _, _, _, _ -> },
     onEditSet: (exerciseId: Long, setNumber: Int) -> Unit = { _, _ -> },
     onCancelEdit: (exerciseId: Long) -> Unit = {},
+    onFinish: () -> Unit = {},
 ) {
+    var confirmFinish by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -113,12 +127,52 @@ fun WorkoutScreen(
                 items(state.exercises, key = { it.exercise.id }) { ex ->
                     ExerciseCard(ex, onSubmitSet, onEditSet, onCancelEdit)
                 }
+                item(key = "finish") {
+                    Button(
+                        onClick = { confirmFinish = true },
+                        modifier = Modifier.fillMaxWidth().testTag(WorkoutTags.FINISH),
+                    ) {
+                        Text(stringResource(R.string.workout_finish))
+                    }
+                }
             }
             WorkoutUiState.NotFound -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                 Text(stringResource(R.string.workout_not_found))
             }
             WorkoutUiState.Loading -> Unit
         }
+    }
+
+    if (confirmFinish && state is WorkoutUiState.Ready) {
+        val text = if (state.doneSets < state.plannedSets) {
+            stringResource(R.string.workout_finish_dialog_missing, state.doneSets, state.plannedSets)
+        } else {
+            stringResource(R.string.workout_finish_dialog_complete)
+        }
+        AlertDialog(
+            onDismissRequest = { confirmFinish = false },
+            title = { Text(stringResource(R.string.workout_finish_dialog_title)) },
+            text = { Text(text, modifier = Modifier.testTag(WorkoutTags.FINISH_DIALOG_TEXT)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmFinish = false
+                        onFinish()
+                    },
+                    modifier = Modifier.testTag(WorkoutTags.FINISH_CONFIRM),
+                ) {
+                    Text(stringResource(R.string.workout_finish_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmFinish = false },
+                    modifier = Modifier.testTag(WorkoutTags.FINISH_DISMISS),
+                ) {
+                    Text(stringResource(R.string.workout_finish_dismiss))
+                }
+            },
+        )
     }
 }
 

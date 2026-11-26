@@ -3,10 +3,12 @@ package com.trackmygymgains.ui.workout
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -55,6 +57,7 @@ class WorkoutScreenTest {
     private class Submitted {
         val calls = mutableListOf<List<Any?>>()
         val edits = mutableListOf<Pair<Long, Int>>()
+        var finishes = 0
     }
 
     private fun show(state: WorkoutUiState, submitted: Submitted = Submitted()) {
@@ -65,9 +68,49 @@ class WorkoutScreenTest {
                     onBack = {},
                     onSubmitSet = { id, n, l, r, o, rir -> submitted.calls += listOf(id, n, l, r, o, rir) },
                     onEditSet = { id, n -> submitted.edits += id to n },
+                    onFinish = { submitted.finishes++ },
                 )
             }
         }
+    }
+
+    @Test
+    fun finishDialogShowsMissingSetsAndConfirmCallsBack() {
+        val submitted = Submitted()
+        show(ui(logged = listOf(logged(1, 80.0, 8, SetOutcome.BUFFER, 2))), submitted)
+
+        rule.onNodeWithTag(WorkoutTags.FINISH).performScrollTo().performClick()
+        rule.onNodeWithTag(WorkoutTags.FINISH_DIALOG_TEXT)
+            .assertTextEquals("Hai completato 1 serie su 3. Vuoi terminare l'allenamento?")
+        assertEquals(0, submitted.finishes)
+
+        rule.onNodeWithTag(WorkoutTags.FINISH_CONFIRM).performClick()
+
+        assertEquals(1, submitted.finishes)
+        rule.onNodeWithTag(WorkoutTags.FINISH_DIALOG_TEXT).assertDoesNotExist()
+    }
+
+    @Test
+    fun finishDialogDismissDoesNotFinish() {
+        val submitted = Submitted()
+        show(ui(), submitted)
+
+        rule.onNodeWithTag(WorkoutTags.FINISH).performClick()
+        rule.onNodeWithTag(WorkoutTags.FINISH_DIALOG_TEXT).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.FINISH_DISMISS).performClick()
+
+        assertEquals(0, submitted.finishes)
+        rule.onNodeWithTag(WorkoutTags.FINISH_DIALOG_TEXT).assertDoesNotExist()
+    }
+
+    @Test
+    fun finishDialogWhenAllSetsDoneShowsSimpleConfirmation() {
+        val all = (1..3).map { logged(it, 80.0, 8, SetOutcome.BUFFER, 2) }
+        show(ui(logged = all))
+
+        rule.onNodeWithTag(WorkoutTags.FINISH).performClick()
+        rule.onNodeWithTag(WorkoutTags.FINISH_DIALOG_TEXT)
+            .assertTextEquals("Hai completato tutte le serie. Vuoi terminare l'allenamento?")
     }
 
     @Test
