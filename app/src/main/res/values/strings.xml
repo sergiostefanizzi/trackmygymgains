@@ -46,6 +46,28 @@
 
     <!-- Workout -->
     <string name="workout_back">Indietro</string>
-    <string name="workout_placeholder">Schermata allenamento in arrivo</string>
+    <string name="workout_target_sets_reps">%1$d × %2$s</string>
+    <string name="workout_target_sets_only">%1$d serie</string>
+    <string name="workout_target_rir">RIR %1$s</string>
+    <string name="workout_target_rest">Rec. %1$s</string>
+    <string name="workout_jump_set">Jump set</string>
+    <string name="workout_progress">%1$d/%2$d serie</string>
+    <string name="workout_set_summary_buffer">%1$d · %2$s kg × %3$d · Buffer RIR %4$d</string>
+    <string name="workout_set_summary_failure">%1$d · %2$s kg × %3$d · Cedimento</string>
+    <string name="workout_set_pending">Serie %1$d</string>
+    <string name="workout_load_label">Carico (kg)</string>
+    <string name="workout_reps_label">Ripetizioni</string>
+    <string name="workout_outcome_buffer">Buffer</string>
+    <string name="workout_outcome_failure">Cedimento</string>
+    <string name="workout_rir_label">RIR</string>
+    <string name="workout_rir_decrease">Diminuisci RIR</string>
+    <string name="workout_rir_increase">Aumenta RIR</string>
+    <string name="workout_complete_set">Completa serie</string>
+    <string name="workout_save_set">Salva</string>
+    <string name="workout_cancel_edit">Annulla</string>
+    <string name="workout_error_not_a_number">Numero non valido</string>
+    <string name="workout_error_decimals">Massimo 2 decimali</string>
+    <string name="workout_error_load_range">Massimo 1000 kg</string>
+    <string name="workout_error_reps_range">Da 1 a 999 ripetizioni</string>
     <string name="workout_not_found">Allenamento non trovato</string>
 </resources>

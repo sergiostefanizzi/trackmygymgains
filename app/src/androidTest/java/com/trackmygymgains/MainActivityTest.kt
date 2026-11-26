@@ -11,6 +11,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.trackmygymgains.ui.workout.WorkoutTags
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.trackmygymgains.data.plan.ParsedPlan
@@ -70,14 +72,19 @@ class MainActivityWithPlanTest {
 
     @Test
     fun startWorkoutBackToHomeResumeThenCancel() {
-        val placeholder = context.getString(R.string.workout_placeholder)
         val back = context.getString(R.string.workout_back)
         val start = context.getString(R.string.home_start_workout)
 
         waitForText("FULL BODY 1 · 7 esercizi")
         composeRule.onAllNodesWithText(start).onFirst().performClick()
 
-        waitForText(placeholder)
+        waitForText("PULL UP")
+
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.LOAD_FIELD)).onFirst().performTextInput("0")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.REPS_FIELD)).onFirst().performTextInput("6")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.SUBMIT)).onFirst().performClick()
+        val summary = "1 · 0 kg × 6 · Buffer RIR 1"
+        waitForText(summary)
         composeRule.onNodeWithText("FULL BODY 1").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription(back).performClick()
@@ -85,7 +92,7 @@ class MainActivityWithPlanTest {
         composeRule.onNodeWithTag(HomeTags.OPEN_SESSION).assertIsDisplayed()
 
         composeRule.onNodeWithTag(HomeTags.RESUME).performClick()
-        waitForText(placeholder)
+        waitForText(summary)
 
         composeRule.onNodeWithContentDescription(back).performClick()
         waitForTag(HomeTags.CANCEL_SESSION)
