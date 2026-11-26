@@ -14,16 +14,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.NavHost
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.trackmygymgains.TrackMyGymGainsApp
 import com.trackmygymgains.ui.home.HomeRoute
 import com.trackmygymgains.ui.importplan.ImportRoute
+import com.trackmygymgains.ui.workout.WorkoutRoute
+import com.trackmygymgains.ui.workout.WorkoutViewModel
 import kotlinx.coroutines.flow.first
 
 object Routes {
     const val IMPORT = "import"
     const val HOME = "home"
+    const val WORKOUT = "workout/{${WorkoutViewModel.SESSION_ID_ARG}}"
+
+    fun workout(sessionId: Long) = "workout/$sessionId"
 }
 
 const val START_LOADING_TAG = "start_loading"
@@ -64,7 +71,16 @@ fun AppNavHost() {
             )
         }
         composable(Routes.HOME) {
-            HomeRoute(onImportNew = { navController.navigate(Routes.IMPORT) })
+            HomeRoute(
+                onImportNew = { navController.navigate(Routes.IMPORT) },
+                onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
+            )
+        }
+        composable(
+            route = Routes.WORKOUT,
+            arguments = listOf(navArgument(WorkoutViewModel.SESSION_ID_ARG) { type = NavType.LongType }),
+        ) {
+            WorkoutRoute(onBack = { navController.popBackStack() })
         }
     }
 }

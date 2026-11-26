@@ -33,4 +33,19 @@
     <string name="home_menu">Altre opzioni</string>
     <string name="home_import_new">Importa nuova scheda</string>
     <string name="home_day_summary">%1$s · %2$s</string>
+    <string name="home_start_workout">Inizia allenamento</string>
+    <string name="home_start_disabled_hint">Hai già un allenamento in corso: terminalo o annullalo per iniziarne un altro.</string>
+    <string name="home_open_session_title">Allenamento in corso</string>
+    <string name="home_open_session_summary">%1$s · iniziato alle %2$s</string>
+    <string name="home_resume">Riprendi</string>
+    <string name="home_cancel_session">Annulla allenamento</string>
+    <string name="home_cancel_dialog_title">Annullare l\'allenamento?</string>
+    <string name="home_cancel_dialog_text">L\'allenamento in corso e le serie registrate fino a ora verranno eliminati.</string>
+    <string name="home_cancel_confirm">Sì, annulla</string>
+    <string name="home_cancel_dismiss">Non annullare</string>
+
+    <!-- Workout -->
+    <string name="workout_back">Indietro</string>
+    <string name="workout_placeholder">Schermata allenamento in arrivo</string>
+    <string name="workout_not_found">Allenamento non trovato</string>
 </resources>

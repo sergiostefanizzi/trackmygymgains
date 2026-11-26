@@ -5,6 +5,7 @@ import com.trackmygymgains.data.db.AppDatabase
 import com.trackmygymgains.data.db.entity.PlannedExerciseEntity
 import com.trackmygymgains.data.db.entity.WorkoutDayEntity
 import com.trackmygymgains.data.db.entity.WorkoutPlanEntity
+import com.trackmygymgains.data.db.relation.DayWithExercises
 import com.trackmygymgains.data.db.relation.PlanWithDays
 import com.trackmygymgains.data.plan.ParsedPlan
 import kotlinx.coroutines.flow.Flow
@@ -62,29 +63,32 @@ class PlanRepository(
 
     fun observeHasActivePlan(): Flow<Boolean> = observeActivePlan().map { it != null }
 
+    /** A day of any plan (active or not), e.g. the day of an open session after a re-import. */
+    suspend fun getDay(dayId: Long): WorkoutDay? = dao.getDay(dayId)?.toDomain()
+
     private fun PlanWithDays.toDomain(): WorkoutPlan = WorkoutPlan(
         id = plan.id,
         name = plan.name,
         sheetName = plan.sheetName,
         sourceFileName = plan.sourceFileName,
         importedAt = plan.importedAt,
-        days = days.sortedBy { it.day.position }.map { d ->
-            WorkoutDay(
-                id = d.day.id,
-                name = d.day.name,
-                position = d.day.position,
-                exercises = d.exercises.sortedBy { it.position }.map { e ->
-                    PlannedExercise(
-                        id = e.id,
-                        position = e.position,
-                        name = e.name,
-                        sets = e.sets,
-                        targetReps = e.targetReps,
-                        targetRir = e.targetRir,
-                        restSeconds = e.restSeconds,
-                        notes = e.notes,
-                    )
-                },
+        days = days.sortedBy { it.day.position }.map { it.toDomain() },
+    )
+
+    private fun DayWithExercises.toDomain(): WorkoutDay = WorkoutDay(
+        id = day.id,
+        name = day.name,
+        position = day.position,
+        exercises = exercises.sortedBy { it.position }.map { e ->
+            PlannedExercise(
+                id = e.id,
+                position = e.position,
+                name = e.name,
+                sets = e.sets,
+                targetReps = e.targetReps,
+                targetRir = e.targetRir,
+                restSeconds = e.restSeconds,
+                notes = e.notes,
             )
         },
     )

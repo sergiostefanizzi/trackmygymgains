@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import com.trackmygymgains.data.db.entity.PlannedExerciseEntity
 import com.trackmygymgains.data.db.entity.WorkoutDayEntity
 import com.trackmygymgains.data.db.entity.WorkoutPlanEntity
+import com.trackmygymgains.data.db.relation.DayWithExercises
 import com.trackmygymgains.data.db.relation.PlanWithDays
 import kotlinx.coroutines.flow.Flow
 
@@ -35,6 +36,10 @@ interface PlanDao {
     @Transaction
     @Query("SELECT * FROM workout_plan WHERE id = :id")
     suspend fun getPlan(id: Long): PlanWithDays?
+
+    @Transaction
+    @Query("SELECT * FROM workout_day WHERE id = :dayId")
+    suspend fun getDay(dayId: Long): DayWithExercises?
 
     @Query("DELETE FROM workout_plan WHERE id = :id")
     suspend fun deletePlan(id: Long)
