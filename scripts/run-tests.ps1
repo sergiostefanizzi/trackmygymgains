@@ -1,6 +1,8 @@
 <#
 .SYNOPSIS
     Runs the JVM (Robolectric) tests and, optionally, the instrumented tests on an emulator.
+    Instrumented tests run ONLY on an emulator, never on a physical phone: connectedDebugAndroidTest
+    uninstalls the app at the end, which would wipe the user's real data. ANDROID_SERIAL is pinned to the emulator.
 
 .PARAMETER UnitOnly
     Run only the JVM unit tests (skip the device tests).
@@ -42,15 +44,16 @@ $startedEmulator = $null
 $emulatorProcess = $null
 $exitCode = 0
 
-function Get-ConnectedDevices {
+function Get-ConnectedEmulators {
+    # Emulators only (serial emulator-NNNN): physical devices are ignored on purpose.
     $lines = & $adb devices 2>$null
-    return @($lines | Where-Object { $_ -match '^\S+\s+device$' })
+    return @($lines | Where-Object { $_ -match '^emulator-\d+\s+device$' } | ForEach-Object { ($_ -split '\s+')[0] })
 }
 
 function Stop-StartedEmulator {
     if ($script:startedEmulator) {
         Write-Host 'Stopping emulator started by this script...'
-        & $adb emu kill 2>$null | Out-Null
+        if ($env:ANDROID_SERIAL) { & $adb -s $env:ANDROID_SERIAL emu kill 2>$null | Out-Null }
         Start-Sleep -Seconds 5
         if ($script:emulatorProcess -and -not $script:emulatorProcess.HasExited) {
             Stop-Process -Id $script:emulatorProcess.Id -Force -ErrorAction SilentlyContinue
@@ -68,7 +71,7 @@ try {
 
     if (-not $UnitOnly) {
         & $adb start-server | Out-Null
-        $devices = Get-ConnectedDevices
+        $devices = Get-ConnectedEmulators
         if ($devices.Count -eq 0) {
             if (-not (Test-Path $emulatorExe)) {
                 Write-Host "ERROR: emulator not found at $emulatorExe" -ForegroundColor Red
@@ -84,8 +87,10 @@ try {
             $booted = $false
             while ((Get-Date) -lt $deadline) {
                 Start-Sleep -Seconds 3
-                if ((Get-ConnectedDevices).Count -gt 0) {
-                    $boot = (& $adb shell getprop sys.boot_completed 2>$null) -join ''
+                $emus = Get-ConnectedEmulators
+                if ($emus.Count -gt 0) {
+                    $env:ANDROID_SERIAL = $emus[0]
+                    $boot = (& $adb -s $emus[0] shell getprop sys.boot_completed 2>$null) -join ''
                     if ($boot.Trim() -eq '1') {
                         $booted = $true
                         break
@@ -99,8 +104,14 @@ try {
             Write-Host 'Emulator booted.' -ForegroundColor Green
         }
         else {
-            Write-Host "Device already connected: $($devices -join ', ')"
+            $env:ANDROID_SERIAL = $devices[0]
+            Write-Host "Emulator already running: $($devices[0])"
         }
+        if ($env:ANDROID_SERIAL -notmatch '^emulator-\d+$') {
+            Write-Host 'ERROR: refusing to run instrumented tests on a non-emulator device.' -ForegroundColor Red
+            throw 'serial'
+        }
+        Write-Host "Instrumented tests target ANDROID_SERIAL=$env:ANDROID_SERIAL (physical devices are never used)."
 
         Write-Host "`n=== Instrumented tests (connectedDebugAndroidTest) ===" -ForegroundColor Cyan
         & $gradlew connectedDebugAndroidTest --console=plain

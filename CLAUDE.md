@@ -21,7 +21,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.trackmygymgains.MainActivityTest"  # single instrumented class
 ```
 
-`.\scripts\run-tests.ps1` is the full gate: forces the AS JBR, runs JVM tests, boots the AVD `Medium_Phone_API_37.0` headless if no device is connected, runs connected tests, kills the emulator it started, exits non-zero on failure. `-UnitOnly` skips device tests. Reports: `app\build\reports\tests\testDebugUnitTest\index.html`, `app\build\reports\androidTests\connected\debug\index.html`. Connected test XML file names contain spaces and ` - ` (e.g. `TEST-Medium_Phone_API_37.0(AVD) - 17.xml`) — quote them in shell commands.
+`.\scripts\run-tests.ps1` is the full gate: forces the AS JBR, runs JVM tests, boots the AVD `Medium_Phone_API_37.0` headless if no emulator is running, runs connected tests **only on the emulator** (ANDROID_SERIAL pinned, physical devices ignored: `connectedDebugAndroidTest` uninstalls the app and would wipe the user's real data on their phone), kills the emulator it started, exits non-zero on failure. Never run `connectedDebugAndroidTest` directly while the user's phone is plugged in without setting `ANDROID_SERIAL` to the emulator. Install on the phone only with `installDebug` and `ANDROID_SERIAL` set to the phone. `-UnitOnly` skips device tests. Reports: `app\build\reports\tests\testDebugUnitTest\index.html`, `app\build\reports\androidTests\connected\debug\index.html`. Connected test XML file names contain spaces and ` - ` (e.g. `TEST-Medium_Phone_API_37.0(AVD) - 17.xml`) — quote them in shell commands.
 
 ## Build setup gotchas
 
