@@ -7,6 +7,11 @@ import com.trackmygymgains.data.file.ContentResolverPlanFileReader
 import com.trackmygymgains.data.file.PlanFileReader
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.SessionRepository
+import com.trackmygymgains.timer.RestTimer
+import com.trackmygymgains.timer.SharedPreferencesRestTimerStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Manual dependency container: owns the database and repositories. Everything is created lazily.
@@ -27,4 +32,11 @@ class AppContainer(
     val sessionRepository: SessionRepository by lazy { SessionRepository(database) }
 
     val planFileReader: PlanFileReader by lazy { ContentResolverPlanFileReader(appContext) }
+
+    val restTimer: RestTimer by lazy {
+        RestTimer(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            store = SharedPreferencesRestTimerStore(appContext),
+        )
+    }
 }
