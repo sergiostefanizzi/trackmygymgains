@@ -54,6 +54,7 @@ function Stop-StartedEmulator {
     if ($script:startedEmulator) {
         Write-Host 'Stopping emulator started by this script...'
         if ($env:ANDROID_SERIAL) { & $adb -s $env:ANDROID_SERIAL emu kill 2>$null | Out-Null }
+        else { Get-ConnectedEmulators | ForEach-Object { & $adb -s $_ emu kill 2>$null | Out-Null } }
         Start-Sleep -Seconds 5
         if ($script:emulatorProcess -and -not $script:emulatorProcess.HasExited) {
             Stop-Process -Id $script:emulatorProcess.Id -Force -ErrorAction SilentlyContinue
@@ -71,23 +72,23 @@ try {
 
     if (-not $UnitOnly) {
         & $adb start-server | Out-Null
-        $devices = Get-ConnectedEmulators
+        $devices = @(Get-ConnectedEmulators)
         if ($devices.Count -eq 0) {
             if (-not (Test-Path $emulatorExe)) {
                 Write-Host "ERROR: emulator not found at $emulatorExe" -ForegroundColor Red
                 throw 'emulator'
             }
-            Write-Host "No device connected. Starting emulator '$Avd' headless..." -ForegroundColor Yellow
+            Write-Host "No emulator running. Starting emulator '$Avd' headless..." -ForegroundColor Yellow
             $script:emulatorProcess = Start-Process -FilePath $emulatorExe `
                 -ArgumentList @('-avd', $Avd, '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot-save') `
                 -PassThru -WindowStyle Hidden
             $script:startedEmulator = $true
 
-            $deadline = (Get-Date).AddMinutes(5)
+            $deadline = (Get-Date).AddMinutes(8)
             $booted = $false
             while ((Get-Date) -lt $deadline) {
                 Start-Sleep -Seconds 3
-                $emus = Get-ConnectedEmulators
+                $emus = @(Get-ConnectedEmulators)
                 if ($emus.Count -gt 0) {
                     $env:ANDROID_SERIAL = $emus[0]
                     $boot = (& $adb -s $emus[0] shell getprop sys.boot_completed 2>$null) -join ''
@@ -98,7 +99,7 @@ try {
                 }
             }
             if (-not $booted) {
-                Write-Host 'ERROR: emulator did not finish booting within 5 minutes.' -ForegroundColor Red
+                Write-Host 'ERROR: emulator did not finish booting within 8 minutes.' -ForegroundColor Red
                 throw 'boot'
             }
             Write-Host 'Emulator booted.' -ForegroundColor Green
