@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TrackMyGymGains: an Android app (Kotlin + Jetpack Compose, Material 3) to track gym workouts. The user imports their training plan from an `.xlsx` file, starts a workout, logs each set (load, reps, **Buffer** with RIR or **Cedimento**/failure) and a rest timer starts automatically with the REST time the plan defines for that exercise. UI strings are Italian (`res/values/strings.xml`).
 
-The work is organised in milestones (M0 setup ✅, M1 xlsx import ✅, G1 Google Sheets import ✅, M2 workout logging ✅, M3 rest timer, M4 history). Each subtask is closed only when its tests pass, then committed with a concise conventional message and pushed to `origin/dev` (not `main`).
+The work is organised in milestones (M0 setup ✅, M1 xlsx import ✅, G1 Google Sheets import ✅, M2 workout logging ✅, M3 rest timer ✅, M4 history). Each subtask is closed only when its tests pass, then committed with a concise conventional message and pushed to `origin/dev` (not `main`).
 
 ## Commands (Windows, PowerShell)
 
