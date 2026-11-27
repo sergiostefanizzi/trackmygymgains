@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TrackMyGymGains: an Android app (Kotlin + Jetpack Compose, Material 3) to track gym workouts. The user imports their training plan from an `.xlsx` file, starts a workout, logs each set (load, reps, **Buffer** with RIR or **Cedimento**/failure) and a rest timer starts automatically with the REST time the plan defines for that exercise. UI strings are Italian (`res/values/strings.xml`).
 
-The work is organised in milestones (M0 setup ✅, M1 xlsx import ✅, M2 workout logging, M3 rest timer, M4 history). Each subtask is closed only when its tests pass, then committed with a concise conventional message and pushed to `origin/dev` (not `main`).
+The work is organised in milestones (M0 setup ✅, M1 xlsx import ✅, G1 Google Sheets import ✅, M2 workout logging ✅, M3 rest timer, M4 history). Each subtask is closed only when its tests pass, then committed with a concise conventional message and pushed to `origin/dev` (not `main`).
 
 ## Commands (Windows, PowerShell)
 
@@ -40,7 +40,7 @@ Planned layers:
 - `data/xlsx/` — `XlsxReader` (custom reader on `java.util.zip` + `javax.xml`, **no Apache POI**, so it runs identically in plain JVM tests) → cell grid; `WorkoutPlanParser` → days and exercises.
 - `data/db/` + `data/repo/` — Room entities `WorkoutPlan`, `WorkoutDay`, `PlannedExercise`, `WorkoutSession`, `SetLog` (`outcome` BUFFER|FAILURE, `rir` only for BUFFER); `PlanRepository` (import in one transaction, new plan becomes the only active one), `SessionRepository`.
 - `ui/importplan`, `ui/home`, `ui/workout`, `ui/history`.
-- `timer/` — `RestTimer` based on an end timestamp with an injectable clock (survives rotation/process death) plus a foreground service for the countdown notification and end-of-rest vibration.
+- `timer/` — app-wide `RestTimer` (`AppContainer.restTimer`) based on an end timestamp with an injectable clock, persisted via `RestTimerStore` (SharedPreferences; `InMemoryRestTimerStore` in tests) so it survives rotation/process death. States Idle → Running → Finished(restored) → Idle. No foreground service: `RestNotifier` (started in `TrackMyGymGainsApp.onCreate`) mirrors the state into an ongoing chronometer notification with −15/+15/Salta actions (`RestTimerActionReceiver`) and an exact `AlarmManager` alarm at the end. `RestTimerAlarmReceiver` → `RestEndHandler` is the single source of the end-of-rest vibration and "Recupero terminato" notification. It ignores stale alarms (after Salta/adjust) and dedupes per end.
 
 ### Plan file format (`.xlsx`)
 
