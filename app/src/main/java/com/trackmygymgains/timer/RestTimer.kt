@@ -54,6 +54,14 @@ class RestTimer(
     private var endAtMillis = 0L
     private var totalSeconds = 0
     private var label: String? = null
+    private var lastFinishedEndAt = 0L
+
+    /**
+     * True when a timer whose end was [endAtMillis] reached its natural end in this process (finished by
+     * the ticker, or found already expired at restore). Used to validate end-of-rest alarms.
+     */
+    @Synchronized
+    fun hasFinishedAt(endAtMillis: Long): Boolean = lastFinishedEndAt == endAtMillis
 
     init {
         val saved = store.load()
@@ -62,6 +70,7 @@ class RestTimer(
                 begin(saved.endAtMillis, saved.totalSeconds, saved.label, persist = false)
             } else {
                 store.clear()
+                lastFinishedEndAt = saved.endAtMillis
                 _state.value = RestTimerState.Finished(saved.totalSeconds, saved.label, restored = true)
             }
         }
@@ -141,6 +150,7 @@ class RestTimer(
         ticker?.cancel()
         ticker = null
         store.clear()
+        lastFinishedEndAt = endAtMillis
         _state.value = RestTimerState.Finished(totalSeconds, label)
     }
 }

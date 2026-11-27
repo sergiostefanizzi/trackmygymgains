@@ -7,9 +7,11 @@ import com.trackmygymgains.data.file.ContentResolverPlanFileReader
 import com.trackmygymgains.data.file.PlanFileReader
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.SessionRepository
+import com.trackmygymgains.timer.RestNotifier
 import com.trackmygymgains.timer.RestTimer
 import com.trackmygymgains.timer.RestTimerStore
 import com.trackmygymgains.timer.SharedPreferencesRestTimerStore
+import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +26,7 @@ class AppContainer(
         Room.databaseBuilder(ctx, AppDatabase::class.java, "trackmygymgains.db").build()
     },
     private val restTimerStoreFactory: (Context) -> RestTimerStore = { ctx -> SharedPreferencesRestTimerStore(ctx) },
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     private val appContext = context.applicationContext ?: context
 
@@ -39,6 +42,12 @@ class AppContainer(
         RestTimer(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             store = restTimerStoreFactory(appContext),
+            clock = clock,
         )
+    }
+
+    /** Mirrors the rest timer into notifications and the end-of-rest alarm. */
+    val restNotifier: RestNotifier by lazy {
+        RestNotifier(appContext, restTimer, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate), clock)
     }
 }

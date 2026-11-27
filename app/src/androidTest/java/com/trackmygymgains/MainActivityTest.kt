@@ -27,6 +27,8 @@ import com.trackmygymgains.testing.REFERENCE_SHEET_NAME
 import com.trackmygymgains.testing.referencePlanExpected
 import com.trackmygymgains.ui.home.HomeTags
 import com.trackmygymgains.ui.importplan.ImportTags
+import androidx.test.rule.GrantPermissionRule
+import android.Manifest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -36,10 +38,11 @@ import org.junit.runner.RunWith
 class MainActivityTest {
 
     private val containerRule = InMemoryContainerRule()
+    private val notificationPermission = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
     private val composeRule = createAndroidComposeRule<MainActivity>()
 
     @get:Rule
-    val chain: RuleChain = RuleChain.outerRule(containerRule).around(composeRule)
+    val chain: RuleChain = RuleChain.outerRule(containerRule).around(notificationPermission).around(composeRule)
 
     @Test
     fun withoutPlanShowsOnboarding() {
@@ -57,10 +60,11 @@ class MainActivityWithPlanTest {
     private val containerRule = InMemoryContainerRule(
         ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList()),
     )
+    private val notificationPermission = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
     private val composeRule = createAndroidComposeRule<MainActivity>()
 
     @get:Rule
-    val chain: RuleChain = RuleChain.outerRule(containerRule).around(composeRule)
+    val chain: RuleChain = RuleChain.outerRule(containerRule).around(notificationPermission).around(composeRule)
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 

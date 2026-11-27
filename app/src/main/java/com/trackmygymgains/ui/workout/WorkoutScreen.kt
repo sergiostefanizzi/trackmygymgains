@@ -1,5 +1,12 @@
 package com.trackmygymgains.ui.workout
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,6 +64,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.OutlinedButton
 
+/** Ask for POST_NOTIFICATIONS at most once per app launch (process); denial is never nagged. */
+private var notificationPermissionAsked = false
+
 object WorkoutTags {
     const val LOAD_FIELD = "workout_load"
     const val REPS_FIELD = "workout_reps"
@@ -92,6 +102,17 @@ fun WorkoutRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val restState by viewModel.restState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationPermissionAsked &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionAsked = true
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     LaunchedEffect(viewModel) {
         viewModel.sessionFinished.collect { onFinished(it) }
     }

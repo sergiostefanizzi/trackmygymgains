@@ -91,4 +91,11 @@
     <string name="summary_set_buffer">%1$s kg × %2$d · Buffer RIR %3$d</string>
     <string name="summary_set_failure">%1$s kg × %2$d · Cedimento</string>
     <string name="summary_home">Torna alla home</string>
+
+    <!-- Rest timer notifications -->
+    <string name="notif_channel_rest_running">Recupero in corso</string>
+    <string name="notif_channel_rest_done">Fine recupero</string>
+    <string name="notif_rest_title_default">Recupero</string>
+    <string name="notif_rest_done_title">Recupero terminato</string>
+    <string name="notif_rest_done_text">Pronto per la serie successiva</string>
 </resources>
