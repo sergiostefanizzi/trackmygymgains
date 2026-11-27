@@ -7,6 +7,7 @@ import com.trackmygymgains.AppContainer
 import com.trackmygymgains.TrackMyGymGainsApp
 import com.trackmygymgains.data.db.AppDatabase
 import com.trackmygymgains.data.plan.ParsedPlan
+import com.trackmygymgains.timer.InMemoryRestTimerStore
 import kotlinx.coroutines.runBlocking
 import org.junit.rules.TestRule
 import org.junit.runner.Description
@@ -25,9 +26,11 @@ class InMemoryContainerRule(private val seedPlan: ParsedPlan? = null) : TestRule
     override fun apply(base: Statement, description: Description): Statement = object : Statement() {
         override fun evaluate() {
             val app = ApplicationProvider.getApplicationContext<Context>() as TrackMyGymGainsApp
-            val installed = AppContainer(app) { ctx ->
-                Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java).build()
-            }
+            val installed = AppContainer(
+                app,
+                databaseFactory = { ctx -> Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java).build() },
+                restTimerStoreFactory = { InMemoryRestTimerStore() },
+            )
             app.setContainerForTesting(installed)
             container = installed
             try {

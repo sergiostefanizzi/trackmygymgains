@@ -8,6 +8,7 @@ import com.trackmygymgains.data.file.PlanFileReader
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.SessionRepository
 import com.trackmygymgains.timer.RestTimer
+import com.trackmygymgains.timer.RestTimerStore
 import com.trackmygymgains.timer.SharedPreferencesRestTimerStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ class AppContainer(
     private val databaseFactory: (Context) -> AppDatabase = { ctx ->
         Room.databaseBuilder(ctx, AppDatabase::class.java, "trackmygymgains.db").build()
     },
+    private val restTimerStoreFactory: (Context) -> RestTimerStore = { ctx -> SharedPreferencesRestTimerStore(ctx) },
 ) {
     private val appContext = context.applicationContext ?: context
 
@@ -36,7 +38,7 @@ class AppContainer(
     val restTimer: RestTimer by lazy {
         RestTimer(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            store = SharedPreferencesRestTimerStore(appContext),
+            store = restTimerStoreFactory(appContext),
         )
     }
 }

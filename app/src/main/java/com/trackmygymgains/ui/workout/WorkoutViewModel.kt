@@ -12,6 +12,9 @@ import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.PlannedExercise
 import com.trackmygymgains.data.repo.SessionRepository
+import com.trackmygymgains.timer.RestTimer
+import com.trackmygymgains.timer.RestTimerState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,8 +60,12 @@ sealed interface WorkoutUiState {
 class WorkoutViewModel(
     private val sessionId: Long,
     private val sessionRepository: SessionRepository,
-    planRepository: PlanRepository,
+    private val planRepository: PlanRepository,
+    private val restTimer: RestTimer,
 ) : ViewModel() {
+
+    /** App-wide rest timer state, shown as a banner by the screen. */
+    val restState: StateFlow<RestTimerState> = restTimer.state
 
     /** exerciseId -> set number open for editing. */
     private val editing = MutableStateFlow<Map<Long, Int>>(emptyMap())
@@ -116,15 +123,40 @@ class WorkoutViewModel(
         reps: Int,
         outcome: SetOutcome,
         rir: Int?,
-    ) {
-        viewModelScope.launch {
+    ): Job {
+        return viewModelScope.launch {
+            val before = sessionRepository.observeSession(sessionId).first()
+            val isNew = before != null &&
+                before.sets.none { it.plannedExerciseId == plannedExerciseId && it.setNumber == setNumber }
             sessionRepository.logSet(
                 sessionId, plannedExerciseId, setNumber, loadKg, reps, outcome,
                 if (outcome == SetOutcome.BUFFER) rir else null,
             )
             editing.update { it - plannedExerciseId }
+            if (isNew) startRestAfterNewSet(before.dayId, before.sets.size + 1, plannedExerciseId)
         }
     }
+
+    /** Auto-starts the exercise's rest, unless it is a jump set or the whole day is now complete. */
+    private suspend fun startRestAfterNewSet(dayId: Long, doneSets: Int, plannedExerciseId: Long) {
+        val exercises = planRepository.getDay(dayId)?.exercises.orEmpty()
+        val exercise = exercises.firstOrNull { it.id == plannedExerciseId } ?: return
+        val rest = exercise.restSeconds ?: return
+        if (doneSets >= exercises.sumOf { it.sets }) {
+            restTimer.skip() // day complete: no rest, and drop the one left from the previous set
+            return
+        }
+        restTimer.start(rest, exercise.name)
+    }
+
+    /** Manual rest for jump-set exercises (no rest defined by the plan). */
+    fun startManualRest(label: String) = restTimer.start(MANUAL_REST_SECONDS, label)
+
+    fun adjustRest(deltaSeconds: Int) = restTimer.adjust(deltaSeconds)
+
+    fun skipRest() = restTimer.skip()
+
+    fun acknowledgeRestFinished() = restTimer.acknowledgeFinished()
 
     fun startEdit(plannedExerciseId: Long, setNumber: Int) {
         editing.update { it + (plannedExerciseId to setNumber) }
@@ -138,6 +170,7 @@ class WorkoutViewModel(
     fun finishWorkout() {
         if (finishRequested) return
         finishRequested = true
+        restTimer.skip()
         viewModelScope.launch {
             sessionRepository.finishSession(sessionId)
             finished.send(sessionId)
@@ -148,13 +181,16 @@ class WorkoutViewModel(
         /** Navigation argument holding the session id. */
         const val SESSION_ID_ARG = "sessionId"
 
+        /** Duration of the manually started rest (jump-set exercises). */
+        const val MANUAL_REST_SECONDS = 60
+
         val Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as TrackMyGymGainsApp).container
                 val sessionId = checkNotNull(createSavedStateHandle().get<Long>(SESSION_ID_ARG)) {
                     "$SESSION_ID_ARG navigation argument missing"
                 }
-                WorkoutViewModel(sessionId, container.sessionRepository, container.planRepository)
+                WorkoutViewModel(sessionId, container.sessionRepository, container.planRepository, container.restTimer)
             }
         }
     }

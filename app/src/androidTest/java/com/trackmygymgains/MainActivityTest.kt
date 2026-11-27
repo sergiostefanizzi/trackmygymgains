@@ -1,7 +1,10 @@
 package com.trackmygymgains
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertTextEquals
+import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -138,6 +141,29 @@ class MainActivityWithPlanTest {
             composeRule.onAllNodes(hasTestTag(HomeTags.OPEN_SESSION)).fetchSemanticsNodes().isEmpty()
         }
         composeRule.onAllNodesWithText(start).onFirst().assertIsEnabled()
+    }
+
+    @Test
+    fun loggingSetShowsRestBannerAndSkipHidesIt() {
+        val start = context.getString(R.string.home_start_workout)
+        waitForText("FULL BODY 1 · 7 esercizi")
+        composeRule.onAllNodesWithText(start).onFirst().performClick()
+        waitForText("PULL UP")
+
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.LOAD_FIELD)).onFirst().performTextInput("80")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.REPS_FIELD)).onFirst().performTextInput("6")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.SUBMIT)).onFirst().performClick()
+
+        waitForTag(WorkoutTags.REST_BANNER)
+        composeRule.onNodeWithTag(WorkoutTags.REST_LABEL).assertTextEquals("PULL UP")
+        val time = composeRule.onNodeWithTag(WorkoutTags.REST_TIME).fetchSemanticsNode()
+            .config[SemanticsProperties.Text].joinToString("") { it.text }
+        assertTrue("unexpected rest time $time", time.startsWith("2:5") || time == "3:00")
+
+        composeRule.onNodeWithTag(WorkoutTags.REST_SKIP).performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag(WorkoutTags.REST_BANNER)).fetchSemanticsNodes().isEmpty()
+        }
     }
 
     private fun waitForText(text: String) {

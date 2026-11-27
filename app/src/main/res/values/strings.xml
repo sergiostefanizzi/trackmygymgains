@@ -70,6 +70,11 @@
     <string name="workout_error_load_range">Massimo 1000 kg</string>
     <string name="workout_error_reps_range">Da 1 a 999 ripetizioni</string>
     <string name="workout_not_found">Allenamento non trovato</string>
+    <string name="workout_rest_start_manual">Avvia recupero %1$s</string>
+    <string name="workout_rest_finished">Recupero terminato</string>
+    <string name="workout_rest_minus">−15 s</string>
+    <string name="workout_rest_plus">+15 s</string>
+    <string name="workout_rest_skip">Salta</string>
     <string name="workout_finish">Termina allenamento</string>
     <string name="workout_finish_dialog_title">Terminare l\'allenamento?</string>
     <string name="workout_finish_dialog_missing">Hai completato %1$d serie su %2$d. Vuoi terminare l\'allenamento?</string>

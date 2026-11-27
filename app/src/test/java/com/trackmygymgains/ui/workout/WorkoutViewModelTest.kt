@@ -18,6 +18,11 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import com.trackmygymgains.timer.InMemoryRestTimerStore
+import com.trackmygymgains.timer.RestTimer
+import com.trackmygymgains.timer.RestTimerState
+import java.time.Clock
+import kotlinx.coroutines.test.TestScope
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,12 +61,14 @@ class WorkoutViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun TestScope.newTimer() = RestTimer(backgroundScope, InMemoryRestTimerStore(), Clock.systemUTC())
+
     private suspend fun ready(vm: WorkoutViewModel, predicate: (WorkoutUiState.Ready) -> Boolean = { true }) =
         vm.state.first { it is WorkoutUiState.Ready && predicate(it) } as WorkoutUiState.Ready
 
     @Test
     fun readyShowsDayExercisesInOrder() = runTest {
-        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans)
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, newTimer())
 
         val state = ready(vm)
 
@@ -76,14 +83,14 @@ class WorkoutViewModelTest {
 
     @Test
     fun unknownSessionIsNotFound() = runTest {
-        val vm = WorkoutViewModel(999, sessions, plans)
+        val vm = WorkoutViewModel(999, sessions, plans, newTimer())
         assertEquals(WorkoutUiState.NotFound, vm.state.first { it !is WorkoutUiState.Loading })
     }
 
     @Test
     fun completingSetsSavesBufferAndFailure() = runTest {
         val sessionId = sessions.startSession(dayId)
-        val vm = WorkoutViewModel(sessionId, sessions, plans)
+        val vm = WorkoutViewModel(sessionId, sessions, plans, newTimer())
         val ex = exercises.first()
 
         vm.completeSet(ex.id, 1, 82.5, 6, SetOutcome.BUFFER, 2)
@@ -102,7 +109,7 @@ class WorkoutViewModelTest {
     @Test
     fun editingCompletedSetUpdatesIt() = runTest {
         val sessionId = sessions.startSession(dayId)
-        val vm = WorkoutViewModel(sessionId, sessions, plans)
+        val vm = WorkoutViewModel(sessionId, sessions, plans, newTimer())
         val ex = exercises.first()
         vm.completeSet(ex.id, 1, 80.0, 6, SetOutcome.BUFFER, 2)
         ready(vm) { it.exercises.first().loggedSets.size == 1 }
@@ -124,7 +131,7 @@ class WorkoutViewModelTest {
     @Test
     fun prefillFromPreviousSetInSession() = runTest {
         val sessionId = sessions.startSession(dayId)
-        val vm = WorkoutViewModel(sessionId, sessions, plans)
+        val vm = WorkoutViewModel(sessionId, sessions, plans, newTimer())
         val ex = exercises.first()
 
         vm.completeSet(ex.id, 1, 82.5, 6, SetOutcome.BUFFER, 2)
@@ -147,7 +154,7 @@ class WorkoutViewModelTest {
         plans.importPlan(ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList()), "scheda.xlsx", "Nuova")
         val newDay = plans.getActivePlan()!!.days.first()
         val newEx = newDay.exercises.first()
-        val vm = WorkoutViewModel(sessions.startSession(newDay.id), sessions, plans)
+        val vm = WorkoutViewModel(sessions.startSession(newDay.id), sessions, plans, newTimer())
 
         val state = ready(vm)
         assertEquals(SetFormValues("10", "6", SetOutcome.BUFFER, 1), state.exercises.first().currentForm)
@@ -161,7 +168,7 @@ class WorkoutViewModelTest {
     @Test
     fun finishingClosesSessionAndEmitsItsId() = runTest {
         val sessionId = sessions.startSession(dayId)
-        val vm = WorkoutViewModel(sessionId, sessions, plans)
+        val vm = WorkoutViewModel(sessionId, sessions, plans, newTimer())
 
         vm.finishWorkout()
 
@@ -177,8 +184,78 @@ class WorkoutViewModelTest {
         sessions.logSet(other, ex.id, 1, 10.0, 6, SetOutcome.BUFFER, 1)
         // other session stays open: cannot start a second one, so check via a discarded-then-new flow
         sessions.discardSession(other)
-        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans)
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, newTimer())
 
         assertEquals(SetFormValues("", "", SetOutcome.BUFFER, 1), ready(vm).exercises.first().currentForm)
+    }
+
+    private fun RestTimer.running() = state.value as RestTimerState.Running
+
+    @Test
+    fun newSetStartsRestWithExerciseRestAndLabel() = runTest {
+        val timer = newTimer()
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, timer)
+        val ex = exercises.first() // PULL UP, 3'
+
+        vm.completeSet(ex.id, 1, 80.0, 6, SetOutcome.BUFFER, 1).join()
+
+        val s = timer.running()
+        assertEquals(180, s.totalSeconds)
+        assertEquals(ex.name, s.label)
+    }
+
+    @Test
+    fun editingSetDoesNotRestartRest() = runTest {
+        val timer = newTimer()
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, timer)
+        val ex = exercises.first()
+        vm.completeSet(ex.id, 1, 80.0, 6, SetOutcome.BUFFER, 1).join()
+        timer.skip()
+
+        vm.completeSet(ex.id, 1, 85.0, 7, SetOutcome.BUFFER, 1).join()
+
+        assertEquals(RestTimerState.Idle, timer.state.value)
+    }
+
+    @Test
+    fun jumpSetDoesNotAutoStartAndManualStartUsesSixtySeconds() = runTest {
+        val timer = newTimer()
+        val day3 = plans.getActivePlan()!!.days[2]
+        val jump = day3.exercises.first { it.restSeconds == null }
+        val vm = WorkoutViewModel(sessions.startSession(day3.id), sessions, plans, timer)
+
+        vm.completeSet(jump.id, 1, 10.0, 8, SetOutcome.BUFFER, 1).join()
+        assertEquals(RestTimerState.Idle, timer.state.value)
+
+        vm.startManualRest(jump.name)
+        val s = timer.running()
+        assertEquals(60, s.totalSeconds)
+        assertEquals(jump.name, s.label)
+    }
+
+    @Test
+    fun lastSetOfTheDayDoesNotStartRest() = runTest {
+        val timer = newTimer()
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, timer)
+        val all = exercises.flatMap { ex -> (1..ex.sets).map { ex to it } }
+
+        all.dropLast(1).forEach { (ex, n) -> vm.completeSet(ex.id, n, 50.0, 8, SetOutcome.BUFFER, 1).join() }
+        assertEquals(exercises[exercises.size - 1].name, timer.running().label)
+        val (lastEx, lastN) = all.last()
+        vm.completeSet(lastEx.id, lastN, 50.0, 8, SetOutcome.BUFFER, 1).join()
+
+        assertEquals(RestTimerState.Idle, timer.state.value)
+    }
+
+    @Test
+    fun finishingWorkoutSkipsRest() = runTest {
+        val timer = newTimer()
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, timer)
+        vm.completeSet(exercises.first().id, 1, 80.0, 6, SetOutcome.BUFFER, 1).join()
+        timer.running()
+
+        vm.finishWorkout()
+
+        assertEquals(RestTimerState.Idle, timer.state.value)
     }
 }

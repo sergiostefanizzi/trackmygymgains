@@ -9,6 +9,7 @@ import com.trackmygymgains.TrackMyGymGainsApp
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.SessionRepository
 import com.trackmygymgains.data.repo.WorkoutPlan
+import com.trackmygymgains.timer.RestTimer
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,6 +38,7 @@ sealed interface HomeUiState {
 class HomeViewModel(
     private val planRepository: PlanRepository,
     private val sessionRepository: SessionRepository,
+    private val restTimer: RestTimer,
 ) : ViewModel() {
 
     private val started = Channel<Long>(Channel.BUFFERED)
@@ -78,6 +80,7 @@ class HomeViewModel(
 
     /** "Annulla allenamento": deletes the open session and its sets. */
     fun cancelSession(sessionId: Long) {
+        restTimer.skip()
         viewModelScope.launch { sessionRepository.discardSession(sessionId) }
     }
 
@@ -85,7 +88,7 @@ class HomeViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as TrackMyGymGainsApp).container
-                HomeViewModel(container.planRepository, container.sessionRepository)
+                HomeViewModel(container.planRepository, container.sessionRepository, container.restTimer)
             }
         }
     }

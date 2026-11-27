@@ -51,6 +51,11 @@ import com.trackmygymgains.data.model.SetOutcome
 import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlannedExercise
 import com.trackmygymgains.ui.common.formatRest
+import com.trackmygymgains.timer.RestTimerState
+import kotlinx.coroutines.delay
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedButton
 
 object WorkoutTags {
     const val LOAD_FIELD = "workout_load"
@@ -68,6 +73,14 @@ object WorkoutTags {
     const val FINISH_DIALOG_TEXT = "workout_finish_dialog_text"
     const val FINISH_CONFIRM = "workout_finish_confirm"
     const val FINISH_DISMISS = "workout_finish_dismiss"
+    const val REST_BANNER = "workout_rest_banner"
+    const val REST_LABEL = "workout_rest_label"
+    const val REST_TIME = "workout_rest_time"
+    const val REST_MINUS = "workout_rest_minus"
+    const val REST_PLUS = "workout_rest_plus"
+    const val REST_SKIP = "workout_rest_skip"
+    const val REST_FINISHED = "workout_rest_finished"
+    const val REST_START_MANUAL = "workout_rest_start_manual"
 }
 
 /** Stateful wrapper around [WorkoutScreen]. The session id comes from the navigation argument. */
@@ -78,6 +91,7 @@ fun WorkoutRoute(
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val restState by viewModel.restState.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.sessionFinished.collect { onFinished(it) }
     }
@@ -88,6 +102,11 @@ fun WorkoutRoute(
         onEditSet = viewModel::startEdit,
         onCancelEdit = viewModel::cancelEdit,
         onFinish = viewModel::finishWorkout,
+        restState = restState,
+        onStartRest = viewModel::startManualRest,
+        onRestAdjust = viewModel::adjustRest,
+        onRestSkip = viewModel::skipRest,
+        onRestFinishedShown = viewModel::acknowledgeRestFinished,
     )
 }
 
@@ -101,9 +120,17 @@ fun WorkoutScreen(
     onEditSet: (exerciseId: Long, setNumber: Int) -> Unit = { _, _ -> },
     onCancelEdit: (exerciseId: Long) -> Unit = {},
     onFinish: () -> Unit = {},
+    restState: RestTimerState = RestTimerState.Idle,
+    onStartRest: (label: String) -> Unit = {},
+    onRestAdjust: (deltaSeconds: Int) -> Unit = {},
+    onRestSkip: () -> Unit = {},
+    onRestFinishedShown: () -> Unit = {},
 ) {
     var confirmFinish by remember { mutableStateOf(false) }
     Scaffold(
+        bottomBar = {
+            RestBanner(restState, onRestAdjust, onRestSkip, onRestFinishedShown)
+        },
         topBar = {
             TopAppBar(
                 title = { Text((state as? WorkoutUiState.Ready)?.dayName.orEmpty()) },
@@ -125,7 +152,7 @@ fun WorkoutScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.exercises, key = { it.exercise.id }) { ex ->
-                    ExerciseCard(ex, onSubmitSet, onEditSet, onCancelEdit)
+                    ExerciseCard(ex, restState !is RestTimerState.Running, onSubmitSet, onEditSet, onCancelEdit, onStartRest)
                 }
                 item(key = "finish") {
                     Button(
@@ -196,9 +223,11 @@ private fun targetsLine(ex: PlannedExercise): String {
 @Composable
 private fun ExerciseCard(
     ui: ExerciseUi,
+    restIdle: Boolean,
     onSubmitSet: (Long, Int, Double, Int, SetOutcome, Int?) -> Unit,
     onEditSet: (Long, Int) -> Unit,
     onCancelEdit: (Long) -> Unit,
+    onStartRest: (String) -> Unit,
 ) {
     val ex = ui.exercise
     Card(Modifier.fillMaxWidth().testTag(WorkoutTags.EXERCISE_CARD)) {
@@ -211,6 +240,14 @@ private fun ExerciseCard(
                 )
             }
             Text(targetsLine(ex), style = MaterialTheme.typography.bodyMedium)
+            if (ex.restSeconds == null && restIdle) {
+                TextButton(
+                    onClick = { onStartRest(ex.name) },
+                    modifier = Modifier.testTag(WorkoutTags.REST_START_MANUAL),
+                ) {
+                    Text(stringResource(R.string.workout_rest_start_manual, formatRest(WorkoutViewModel.MANUAL_REST_SECONDS)))
+                }
+            }
             ex.notes?.let {
                 Text(
                     it,
@@ -369,6 +406,80 @@ private fun SetForm(
                 TextButton(onClick = onCancel, modifier = Modifier.testTag(WorkoutTags.CANCEL_EDIT)) {
                     Text(stringResource(R.string.workout_cancel_edit))
                 }
+            }
+        }
+    }
+}
+
+/** How long "Recupero terminato" stays visible before the timer is acknowledged. */
+private const val FINISHED_VISIBLE_MILLIS = 3_000L
+
+/** Bottom banner shown while the rest timer is Running or Finished; nothing when Idle. */
+@Composable
+private fun RestBanner(
+    state: RestTimerState,
+    onAdjust: (Int) -> Unit,
+    onSkip: () -> Unit,
+    onFinishedShown: () -> Unit,
+) {
+    when (state) {
+        RestTimerState.Idle -> Unit
+        is RestTimerState.Running -> Surface(
+            tonalElevation = 3.dp,
+            shadowElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth().testTag(WorkoutTags.REST_BANNER),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.label?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.testTag(WorkoutTags.REST_LABEL),
+                    )
+                }
+                Text(
+                    formatRest(state.remainingSeconds),
+                    style = MaterialTheme.typography.displaySmall,
+                    modifier = Modifier.testTag(WorkoutTags.REST_TIME),
+                )
+                LinearProgressIndicator(
+                    progress = {
+                        (state.remainingMillis / (state.totalSeconds * 1000f)).coerceIn(0f, 1f)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { onAdjust(-15) },
+                        modifier = Modifier.weight(1f).testTag(WorkoutTags.REST_MINUS),
+                    ) { Text(stringResource(R.string.workout_rest_minus)) }
+                    OutlinedButton(
+                        onClick = { onAdjust(15) },
+                        modifier = Modifier.weight(1f).testTag(WorkoutTags.REST_PLUS),
+                    ) { Text(stringResource(R.string.workout_rest_plus)) }
+                    Button(
+                        onClick = onSkip,
+                        modifier = Modifier.weight(1f).testTag(WorkoutTags.REST_SKIP),
+                    ) { Text(stringResource(R.string.workout_rest_skip)) }
+                }
+            }
+        }
+        is RestTimerState.Finished -> {
+            LaunchedEffect(state) {
+                delay(FINISHED_VISIBLE_MILLIS)
+                onFinishedShown()
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shadowElevation = 6.dp,
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onFinishedShown).testTag(WorkoutTags.REST_BANNER),
+            ) {
+                Text(
+                    stringResource(R.string.workout_rest_finished),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp).testTag(WorkoutTags.REST_FINISHED),
+                )
             }
         }
     }

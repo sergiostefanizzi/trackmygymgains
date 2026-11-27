@@ -17,6 +17,7 @@ import com.trackmygymgains.R
 import com.trackmygymgains.data.model.SetOutcome
 import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlannedExercise
+import com.trackmygymgains.timer.RestTimerState
 import com.trackmygymgains.ui.theme.TrackMyGymGainsTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -233,5 +234,79 @@ class WorkoutScreenTest {
 
         rule.onNodeWithTag(WorkoutTags.RIR_MINUS).assertIsNotEnabled()
         rule.onNodeWithTag(WorkoutTags.RIR_PLUS).assertIsEnabled()
+    }
+
+    private class RestCalls {
+        val adjusts = mutableListOf<Int>()
+        var skips = 0
+        val manualStarts = mutableListOf<String>()
+    }
+
+    private fun showRest(state: WorkoutUiState, rest: RestTimerState, calls: RestCalls = RestCalls()) {
+        rule.setContent {
+            TrackMyGymGainsTheme {
+                WorkoutScreen(
+                    state = state,
+                    onBack = {},
+                    restState = rest,
+                    onStartRest = { calls.manualStarts += it },
+                    onRestAdjust = { calls.adjusts += it },
+                    onRestSkip = { calls.skips++ },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun runningBannerShowsLabelTimeAndButtons() {
+        val calls = RestCalls()
+        showRest(ui(), RestTimerState.Running(0L, 180, 150_000L, "PULL UP"), calls)
+
+        rule.onNodeWithTag(WorkoutTags.REST_BANNER).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.REST_LABEL).assertTextEquals("PULL UP")
+        rule.onNodeWithTag(WorkoutTags.REST_TIME).assertTextEquals("2:30")
+        rule.onNodeWithTag(WorkoutTags.REST_MINUS).performClick()
+        rule.onNodeWithTag(WorkoutTags.REST_PLUS).performClick()
+        rule.onNodeWithTag(WorkoutTags.REST_SKIP).performClick()
+        assertEquals(listOf(-15, 15), calls.adjusts)
+        assertEquals(1, calls.skips)
+    }
+
+    @Test
+    fun finishedBannerShowsRestFinishedMessage() {
+        showRest(ui(), RestTimerState.Finished(180, "PULL UP"))
+
+        rule.onNodeWithText(context.getString(R.string.workout_rest_finished)).assertIsDisplayed()
+    }
+
+    @Test
+    fun noBannerWhenIdle() {
+        showRest(ui(), RestTimerState.Idle)
+
+        rule.onNodeWithTag(WorkoutTags.REST_BANNER).assertDoesNotExist()
+    }
+
+    @Test
+    fun jumpSetCardShowsManualStartButtonWhileNotRunning() {
+        val calls = RestCalls()
+        val jump = PlannedExercise(2, 1, "ADDUCTOR MACHINE", 2, "8-10", "1-2", null, null)
+        showRest(ui(exercise = jump), RestTimerState.Idle, calls)
+
+        rule.onNodeWithText("Avvia recupero 1:00").assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.REST_START_MANUAL).performClick()
+        assertEquals(listOf("ADDUCTOR MACHINE"), calls.manualStarts)
+    }
+
+    @Test
+    fun manualStartButtonHiddenForExerciseWithRestAndWhileRunning() {
+        showRest(ui(), RestTimerState.Idle)
+        rule.onNodeWithTag(WorkoutTags.REST_START_MANUAL).assertDoesNotExist()
+    }
+
+    @Test
+    fun manualStartButtonHiddenWhileTimerRunning() {
+        val jump = PlannedExercise(2, 1, "ADDUCTOR MACHINE", 2, "8-10", "1-2", null, null)
+        showRest(ui(exercise = jump), RestTimerState.Running(0L, 60, 60_000L, "x"))
+        rule.onNodeWithTag(WorkoutTags.REST_START_MANUAL).assertDoesNotExist()
     }
 }

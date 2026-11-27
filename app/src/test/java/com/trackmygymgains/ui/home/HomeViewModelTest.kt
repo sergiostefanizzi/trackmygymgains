@@ -16,6 +16,11 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import com.trackmygymgains.timer.InMemoryRestTimerStore
+import com.trackmygymgains.timer.RestTimer
+import com.trackmygymgains.timer.RestTimerState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -30,6 +35,7 @@ class HomeViewModelTest {
     private lateinit var db: AppDatabase
     private lateinit var repo: PlanRepository
     private lateinit var sessions: SessionRepository
+    private lateinit var timer: RestTimer
 
     @Before
     fun setUp() {
@@ -39,6 +45,7 @@ class HomeViewModelTest {
             .build()
         repo = PlanRepository(db)
         sessions = SessionRepository(db)
+        timer = RestTimer(CoroutineScope(Job()), InMemoryRestTimerStore())
     }
 
     @After
@@ -55,7 +62,7 @@ class HomeViewModelTest {
 
     @Test
     fun emitsNoPlanThenContentAfterImport() = runTest {
-        val vm = HomeViewModel(repo, sessions)
+        val vm = HomeViewModel(repo, sessions, timer)
         assertEquals(HomeUiState.NoPlan, vm.state.first { it !is HomeUiState.Loading })
 
         importReference()
@@ -68,7 +75,7 @@ class HomeViewModelTest {
     @Test
     fun startCreatesSessionAndEmitsItsId() = runTest {
         importReference()
-        val vm = HomeViewModel(repo, sessions)
+        val vm = HomeViewModel(repo, sessions, timer)
         val dayId = firstDayId()
 
         vm.startWorkout(dayId)
@@ -82,7 +89,7 @@ class HomeViewModelTest {
     @Test
     fun openSessionShowsDayNameAndSurvivesReimport() = runTest {
         importReference()
-        val vm = HomeViewModel(repo, sessions)
+        val vm = HomeViewModel(repo, sessions, timer)
         vm.startWorkout(firstDayId())
         val sessionId = vm.sessionStarted.first()
 
@@ -97,12 +104,14 @@ class HomeViewModelTest {
     @Test
     fun discardRemovesOpenSession() = runTest {
         importReference()
-        val vm = HomeViewModel(repo, sessions)
+        val vm = HomeViewModel(repo, sessions, timer)
         vm.startWorkout(firstDayId())
         val sessionId = vm.sessionStarted.first()
         vm.state.first { it is HomeUiState.Content && it.openSession != null }
 
+        timer.start(120, "PULL UP")
         vm.cancelSession(sessionId)
+        assertEquals(RestTimerState.Idle, timer.state.value)
 
         val content = vm.state.first { it is HomeUiState.Content && it.openSession == null } as HomeUiState.Content
         assertNull(content.openSession)
@@ -112,7 +121,7 @@ class HomeViewModelTest {
     @Test
     fun startIsRejectedWhileSessionIsOpen() = runTest {
         importReference()
-        val vm = HomeViewModel(repo, sessions)
+        val vm = HomeViewModel(repo, sessions, timer)
         val days = repo.getActivePlan()!!.days
         vm.startWorkout(days[0].id)
         val firstId = vm.sessionStarted.first()
