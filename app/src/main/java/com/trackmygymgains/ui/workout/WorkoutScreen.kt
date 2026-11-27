@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,7 +60,6 @@ import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlannedExercise
 import com.trackmygymgains.ui.common.formatRest
 import com.trackmygymgains.timer.RestTimerState
-import kotlinx.coroutines.delay
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.OutlinedButton
@@ -90,6 +90,7 @@ object WorkoutTags {
     const val REST_PLUS = "workout_rest_plus"
     const val REST_SKIP = "workout_rest_skip"
     const val REST_FINISHED = "workout_rest_finished"
+    const val REST_STOP = "workout_rest_stop"
     const val REST_START_MANUAL = "workout_rest_start_manual"
 }
 
@@ -432,8 +433,6 @@ private fun SetForm(
     }
 }
 
-/** How long "Recupero terminato" stays visible before the timer is acknowledged. */
-private const val FINISHED_VISIBLE_MILLIS = 3_000L
 
 /** Bottom banner shown while the rest timer is Running or Finished; nothing when Idle. */
 @Composable
@@ -463,10 +462,12 @@ private fun RestBanner(
                     style = MaterialTheme.typography.displaySmall,
                     modifier = Modifier.testTag(WorkoutTags.REST_TIME),
                 )
+                val progress by animateFloatAsState(
+                    targetValue = (state.remainingMillis / (state.totalSeconds * 1000f)).coerceIn(0f, 1f),
+                    label = "restProgress",
+                )
                 LinearProgressIndicator(
-                    progress = {
-                        (state.remainingMillis / (state.totalSeconds * 1000f)).coerceIn(0f, 1f)
-                    },
+                    progress = { progress },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -485,22 +486,22 @@ private fun RestBanner(
                 }
             }
         }
-        is RestTimerState.Finished -> {
-            LaunchedEffect(state) {
-                delay(FINISHED_VISIBLE_MILLIS)
-                onFinishedShown()
-            }
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shadowElevation = 6.dp,
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onFinishedShown).testTag(WorkoutTags.REST_BANNER),
-            ) {
+        is RestTimerState.Finished -> Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shadowElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth().testTag(WorkoutTags.REST_BANNER),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     stringResource(R.string.workout_rest_finished),
                     style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp).testTag(WorkoutTags.REST_FINISHED),
+                    modifier = Modifier.testTag(WorkoutTags.REST_FINISHED),
                 )
+                Button(
+                    onClick = onFinishedShown,
+                    modifier = Modifier.fillMaxWidth().testTag(WorkoutTags.REST_STOP),
+                ) { Text(stringResource(R.string.workout_rest_stop)) }
             }
         }
     }

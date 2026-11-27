@@ -18,13 +18,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * Mirrors the app-wide [RestTimer] into system surfaces, without a foreground service:
+ * Mirrors the app-wide [RestTimer] into system surfaces (no foreground service while counting down):
  *  - while Running: an ongoing silent notification with a native countdown chronometer (no per-second
  *    updates) and -15 / +15 / Salta actions, plus an AlarmManager alarm at the end of the rest;
  *  - Idle after Running (skip): both are cancelled;
- *  - Finished: the ongoing notification is cancelled. The vibration and the "Recupero terminato"
- *    notification come from [RestTimerAlarmReceiver] (single source), except when an adjustment
- *    ended the timer early (the alarm would not fire at the right time), in which case it is triggered here.
+ *  - Finished: the ongoing notification is cancelled. The ringing ([RestAlarmService]: repeating vibration +
+ *    "Recupero terminato" notification) is started by [RestTimerAlarmReceiver] (single source), except when an
+ *    adjustment ended the timer early (the alarm would not fire at the right time), in which case it is started here.
+ *    The ringing lasts as long as the state is Finished: when the state leaves Finished (Ferma, new rest, Salta)
+ *    the service is stopped and its notification removed.
  *
  * Started from `TrackMyGymGainsApp.onCreate`, so it also runs when the process is recreated and the
  * timer is restored.
@@ -39,6 +41,7 @@ class RestNotifier(
     private var job: Job? = null
     private var postedKey: Pair<Long, String?>? = null
     private var scheduledEndAt: Long? = null
+    private var wasFinished = false
 
     fun start() {
         if (job != null) return
@@ -53,6 +56,7 @@ class RestNotifier(
     private fun onState(state: RestTimerState) {
         when (state) {
             is RestTimerState.Running -> {
+                leaveFinished()
                 val key = state.endAtMillis to state.label
                 if (key != postedKey) {
                     postedKey = key
@@ -64,12 +68,14 @@ class RestNotifier(
                 }
             }
             is RestTimerState.Idle -> {
+                leaveFinished()
                 if (postedKey != null) cancelOngoing(context)
                 postedKey = null
                 if (scheduledEndAt != null) cancelAlarm(context)
                 scheduledEndAt = null
             }
             is RestTimerState.Finished -> {
+                wasFinished = true
                 if (postedKey != null) cancelOngoing(context)
                 postedKey = null
                 val pending = scheduledEndAt
@@ -82,6 +88,14 @@ class RestNotifier(
                 // Otherwise the alarm (about now) does the job; keep it as the fallback for late inexact alarms.
             }
         }
+    }
+
+    /** The state left Finished (Ferma, new rest, Salta): the alarm stops ringing and its notification goes away. */
+    private fun leaveFinished() {
+        if (!wasFinished) return
+        wasFinished = false
+        RestAlarmService.stop(context)
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_DONE)
     }
 
     private fun postOngoing(state: RestTimerState.Running) {
@@ -111,6 +125,7 @@ class RestNotifier(
         const val ACTION_MINUS = "com.trackmygymgains.timer.REST_MINUS"
         const val ACTION_PLUS = "com.trackmygymgains.timer.REST_PLUS"
         const val ACTION_SKIP = "com.trackmygymgains.timer.REST_SKIP"
+        const val ACTION_STOP = "com.trackmygymgains.timer.REST_STOP"
         const val EXTRA_END_AT = "end_at_millis"
         const val ADJUST_SECONDS = 15
         private const val EARLY_FINISH_TOLERANCE_MS = 1_000L
@@ -119,6 +134,7 @@ class RestNotifier(
         private const val REQUEST_MINUS = 3
         private const val REQUEST_PLUS = 4
         private const val REQUEST_SKIP = 5
+        private const val REQUEST_STOP = 6
 
         fun createChannels(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -169,10 +185,11 @@ class RestNotifier(
             )
         }
 
-        private fun actionIntent(context: Context, action: String): PendingIntent {
+        fun actionIntent(context: Context, action: String): PendingIntent {
             val request = when (action) {
                 ACTION_MINUS -> REQUEST_MINUS
                 ACTION_PLUS -> REQUEST_PLUS
+                ACTION_STOP -> REQUEST_STOP
                 else -> REQUEST_SKIP
             }
             val intent = Intent(context, RestTimerActionReceiver::class.java).setAction(action)

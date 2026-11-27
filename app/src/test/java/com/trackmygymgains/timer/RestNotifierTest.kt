@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 
 @RunWith(AndroidJUnit4::class)
 class RestNotifierTest {
@@ -75,6 +76,6 @@ class RestNotifierTest {
         assertTrue(env.timer.state.value is RestTimerState.Finished)
         assertNull(env.alarms.peekNextScheduledAlarm())
         assertNull(env.notification(RestNotifier.NOTIFICATION_RUNNING))
-        assertNotNull(env.notification(RestNotifier.NOTIFICATION_DONE))
+        assertNotNull(shadowOf(env.app).nextStartedService) // RestAlarmService rings
     }
 }

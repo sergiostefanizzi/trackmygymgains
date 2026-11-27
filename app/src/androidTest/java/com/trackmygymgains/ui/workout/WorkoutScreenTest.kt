@@ -239,6 +239,7 @@ class WorkoutScreenTest {
     private class RestCalls {
         val adjusts = mutableListOf<Int>()
         var skips = 0
+        var stops = 0
         val manualStarts = mutableListOf<String>()
     }
 
@@ -252,6 +253,7 @@ class WorkoutScreenTest {
                     onStartRest = { calls.manualStarts += it },
                     onRestAdjust = { calls.adjusts += it },
                     onRestSkip = { calls.skips++ },
+                    onRestFinishedShown = { calls.stops++ },
                 )
             }
         }
@@ -273,10 +275,17 @@ class WorkoutScreenTest {
     }
 
     @Test
-    fun finishedBannerShowsRestFinishedMessage() {
-        showRest(ui(), RestTimerState.Finished(180, "PULL UP"))
+    fun finishedBannerShowsFermaAndStaysUntilTapped() {
+        val calls = RestCalls()
+        showRest(ui(), RestTimerState.Finished(180, "PULL UP"), calls)
 
         rule.onNodeWithText(context.getString(R.string.workout_rest_finished)).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.REST_STOP).assertIsDisplayed()
+        rule.mainClock.advanceTimeBy(10_000)
+        rule.onNodeWithTag(WorkoutTags.REST_STOP).assertIsDisplayed()
+        assertEquals(0, calls.stops)
+        rule.onNodeWithTag(WorkoutTags.REST_STOP).performClick()
+        assertEquals(1, calls.stops)
     }
 
     @Test

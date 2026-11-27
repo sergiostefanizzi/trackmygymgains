@@ -24,7 +24,7 @@ sealed interface RestTimerState {
 
     /**
      * The timer reached zero. [restored] is true when it expired while the process was dead
-     * (the user should still see "Recupero terminato", but vibrating is pointless).
+     * (the user should still see "Recupero terminato"; the alarm still rings, as it is a natural end).
      */
     data class Finished(val totalSeconds: Int, val label: String?, val restored: Boolean = false) : RestTimerState
 }
@@ -34,9 +34,8 @@ sealed interface RestTimerState {
  *
  * State design: `Idle -> Running -> Finished -> Idle`. Finished is a *state*, not a one-shot
  * event, and it is entered exactly once per timer (a single ticker exists at a time and the
- * Running -> Finished transition clears it). M3.3 triggers vibration when it observes a Finished
- * state with `restored == false`; M3.2 shows "Recupero terminato" while the state is Finished and
- * calls [acknowledgeFinished] after a short delay. [start] and [skip] also leave Finished.
+ * Running -> Finished transition clears it). While Finished, the alarm service rings and the banner shows
+ * "Ferma" until the user calls [acknowledgeFinished]; [start] and [skip] also leave Finished (and stop the ringing).
  *
  * Restore on creation: a saved timer still in the future resumes Running; one that already
  * expired goes to Finished(restored = true) and the store is cleared. Finishing and [skip]
@@ -95,7 +94,11 @@ class RestTimer(
         _state.value = RestTimerState.Idle
     }
 
-    /** Adds [deltaSeconds] (may be negative) to the remaining time; reaching 0 finishes the timer. */
+    /**
+     * Adds [deltaSeconds] (may be negative) to the remaining time; reaching 0 finishes the timer.
+     * [RestTimerState.Running.totalSeconds] stays the planned rest so the progress bar visibly follows the
+     * adjustment; it only grows when the new remaining time exceeds it (bar full, never above 100%).
+     */
     @Synchronized
     fun adjust(deltaSeconds: Int) {
         if (_state.value !is RestTimerState.Running) return
@@ -106,7 +109,7 @@ class RestTimer(
             return
         }
         val remainingSec = ((remaining + 999) / 1000).toInt()
-        begin(newEnd, maxOf(totalSeconds + deltaSeconds, remainingSec), label, persist = true)
+        begin(newEnd, maxOf(totalSeconds, remainingSec), label, persist = true)
     }
 
     /** Leaves the Finished state (back to Idle). No-op in other states. */

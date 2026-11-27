@@ -75,6 +75,7 @@
     <string name="workout_rest_minus">−15 s</string>
     <string name="workout_rest_plus">+15 s</string>
     <string name="workout_rest_skip">Salta</string>
+    <string name="workout_rest_stop">Ferma</string>
     <string name="workout_finish">Termina allenamento</string>
     <string name="workout_finish_dialog_title">Terminare l\'allenamento?</string>
     <string name="workout_finish_dialog_missing">Hai completato %1$d serie su %2$d. Vuoi terminare l\'allenamento?</string>

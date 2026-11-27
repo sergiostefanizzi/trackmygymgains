@@ -91,13 +91,37 @@ class RestTimerTest {
         t.start(60)
         t.adjust(15)
         assertEquals(75, t.running().remainingSeconds)
-        assertEquals(75, t.running().totalSeconds)
+        assertEquals(75, t.running().totalSeconds) // exceeds the planned rest: bar full
         assertEquals(e.clock.millis() + 75_000, e.store.saved?.endAtMillis)
         t.adjust(-30)
         assertEquals(45, t.running().remainingSeconds)
-        assertEquals(45, t.running().totalSeconds)
+        assertEquals(75, t.running().totalSeconds)
         advanceTimeBy(45_000); runCurrent()
         assertTrue(t.state.value is RestTimerState.Finished)
+    }
+
+    @Test
+    fun adjust_keepsPlannedTotalSoProgressFollows() = runTest {
+        val e = env(); val t = e.timer()
+        t.start(180)
+        advanceTimeBy(80_000); runCurrent()
+        assertEquals(100, t.running().remainingSeconds)
+        t.adjust(-15)
+        assertEquals(85, t.running().remainingSeconds)
+        assertEquals(180, t.running().totalSeconds)
+        t.adjust(15); t.adjust(15)
+        assertEquals(115, t.running().remainingSeconds)
+        assertEquals(180, t.running().totalSeconds)
+    }
+
+    @Test
+    fun adjust_plusBeyondPlannedGrowsTotal() = runTest {
+        val e = env(); val t = e.timer()
+        t.start(180)
+        advanceTimeBy(5_000); runCurrent()
+        t.adjust(15)
+        assertEquals(190, t.running().remainingSeconds)
+        assertEquals(190, t.running().totalSeconds)
     }
 
     @Test
