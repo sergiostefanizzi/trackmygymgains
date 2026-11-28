@@ -267,7 +267,7 @@ class ImportedHistoryUiTest {
         val state = vm.state.first { it is WorkoutUiState.Ready } as WorkoutUiState.Ready
 
         val form = state.exercises.first().currentForm
-        assertEquals(SetFormValues("40", "6", SetOutcome.BUFFER, SetInput.defaultRir(pullUp.targetRir)), form)
+        assertEquals(SetFormValues("", "", SetOutcome.BUFFER, SetInput.defaultRir(pullUp.targetRir), "40", "6"), form)
         assertNull(state.exercises.first().loggedSets.firstOrNull())
     }
 }

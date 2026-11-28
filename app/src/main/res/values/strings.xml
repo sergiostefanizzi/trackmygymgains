@@ -60,7 +60,10 @@
     <string name="workout_last_failure">Cedimento</string>
     <string name="workout_last_failure_short">C</string>
     <string name="workout_last_not_available">n/d</string>
-    <string name="workout_increase_hint">Hai raggiunto il massimo delle ripetizioni: prova ad aumentare il carico (+%1$s kg)</string>
+    <string name="workout_increase_hint">Hai raggiunto il massimo delle ripetizioni: prova ad aumentare il carico</string>
+    <string name="workout_increment_1">+1 kg</string>
+    <string name="workout_increment_2_5">+2,5 kg</string>
+    <string name="workout_increment_5">+5 kg</string>
     <string name="workout_progress">%1$d/%2$d serie</string>
     <string name="workout_set_summary_buffer">%1$d · %2$s kg × %3$d · Buffer RIR %4$d</string>
     <string name="workout_set_summary_buffer_no_rir">%1$d · %2$s kg × %3$d · Buffer RIR n/d</string>

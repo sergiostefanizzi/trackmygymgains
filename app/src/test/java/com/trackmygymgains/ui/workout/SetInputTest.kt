@@ -100,15 +100,15 @@ class SetInputTest {
     fun prefillPrefersPreviousSetInSession() {
         val inSession = listOf(set(1, 80.0, 8, SetOutcome.BUFFER, 2))
         val last = listOf(set(1, 70.0, 10, SetOutcome.FAILURE, null), set(2, 70.0, 9, SetOutcome.FAILURE, null))
-        assertEquals(SetFormValues("80", "8", SetOutcome.BUFFER, 2), SetInput.prefill(exercise, 2, inSession, last))
+        assertEquals(SetFormValues("", "", SetOutcome.BUFFER, 2, "80", "8"), SetInput.prefill(exercise, 2, inSession, last))
     }
 
     @Test
     fun prefillFallsBackToLastPerformanceSameSetThenLast() {
         val last = listOf(set(1, 70.0, 10, SetOutcome.BUFFER, 3), set(2, 72.5, 9, SetOutcome.FAILURE, null))
-        assertEquals(SetFormValues("70", "10", SetOutcome.BUFFER, 3), SetInput.prefill(exercise, 1, emptyList(), last))
-        assertEquals(SetFormValues("72,5", "9", SetOutcome.FAILURE, 1), SetInput.prefill(exercise, 2, emptyList(), last))
-        assertEquals(SetFormValues("72,5", "9", SetOutcome.FAILURE, 1), SetInput.prefill(exercise, 3, emptyList(), last))
+        assertEquals(SetFormValues("", "", SetOutcome.BUFFER, 3, "70", "10"), SetInput.prefill(exercise, 1, emptyList(), last))
+        assertEquals(SetFormValues("", "", SetOutcome.FAILURE, 1, "72,5", "9"), SetInput.prefill(exercise, 2, emptyList(), last))
+        assertEquals(SetFormValues("", "", SetOutcome.FAILURE, 1, "72,5", "9"), SetInput.prefill(exercise, 3, emptyList(), last))
     }
 
     @Test
@@ -153,16 +153,33 @@ class SetInputTest {
     }
 
     @Test
-    fun prefillIncrementsOnlyWhenFromLastPerformance() {
+    fun prefillNeverAutoIncrements() {
         val last = listOf(set(1, 30.0, 8, SetOutcome.BUFFER, 1), set(2, 30.0, 8, SetOutcome.BUFFER, 1))
-        assertEquals("32,5", SetInput.prefill(exercise, 1, emptyList(), last, true).loadText)
-        assertEquals("32,5", SetInput.prefill(exercise, 3, emptyList(), last, true).loadText) // last set
-        assertEquals("30", SetInput.prefill(exercise, 1, emptyList(), last, false).loadText)
-        val inSession = listOf(set(1, 32.5, 8, SetOutcome.BUFFER, 1))
-        assertEquals("32,5", SetInput.prefill(exercise, 2, inSession, last, true).loadText)
-        val heavy = listOf(set(1, 999.0, 8, SetOutcome.BUFFER, 1))
-        assertEquals("1000", SetInput.prefill(exercise, 1, emptyList(), heavy, true).loadText)
-        assertEquals(SetFormValues("", "", SetOutcome.BUFFER, 1), SetInput.prefill(exercise, 1, emptyList(), emptyList(), true))
+        assertEquals("30", SetInput.prefill(exercise, 1, emptyList(), last).suggestedLoad)
+        assertEquals("30", SetInput.prefill(exercise, 3, emptyList(), last).suggestedLoad)
+        assertEquals("", SetInput.prefill(exercise, 1, emptyList(), last).loadText)
+    }
+
+    @Test
+    fun suggestedLoadWithIncrementAndCap() {
+        assertEquals("30", SetInput.suggestedLoadWith("30", null))
+        assertEquals("31", SetInput.suggestedLoadWith("30", 1.0))
+        assertEquals("32,5", SetInput.suggestedLoadWith("30", 2.5))
+        assertEquals("35", SetInput.suggestedLoadWith("30", 5.0))
+        assertEquals("1000", SetInput.suggestedLoadWith("999", 5.0))
+        assertNull(SetInput.suggestedLoadWith(null, 5.0))
+    }
+
+    @Test
+    fun resolveUsesSuggestionWhenEmptyTypedOverridesAndEmptyWithoutSuggestionIsEmpty() {
+        assertEquals(InputResult.Valid(30.0), SetInput.resolveLoad("", "30"))
+        assertEquals(InputResult.Valid(30.0), SetInput.resolveLoad("  ", "30"))
+        assertEquals(InputResult.Valid(42.5), SetInput.resolveLoad("42,5", "30"))
+        assertEquals(InputResult.Invalid(InputError.NOT_A_NUMBER), SetInput.resolveLoad("abc", "30"))
+        assertEquals(InputResult.Invalid(InputError.EMPTY), SetInput.resolveLoad("", null))
+        assertEquals(InputResult.Valid(8), SetInput.resolveReps("", "8"))
+        assertEquals(InputResult.Valid(6), SetInput.resolveReps("6", "8"))
+        assertEquals(InputResult.Invalid(InputError.EMPTY), SetInput.resolveReps("", null))
     }
 
     private val labels = SetInput.LastLabels(

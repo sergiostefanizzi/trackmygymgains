@@ -111,7 +111,7 @@ class WorkoutViewModel(
                                 loggedSets = logged,
                                 currentSet = current,
                                 currentForm = current?.let {
-                                    SetInput.prefill(ex, it, logged, last?.sets.orEmpty(), increase)
+                                    SetInput.prefill(ex, it, logged, last?.sets.orEmpty())
                                 },
                                 editingSet = editMap[ex.id]?.takeIf { n -> logged.any { it.setNumber == n } },
                                 lastPerformance = last,

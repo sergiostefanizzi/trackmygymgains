@@ -18,13 +18,18 @@ sealed interface InputResult<out T> {
     data class Invalid(val error: InputError) : InputResult<Nothing>
 }
 
-/** Text content of the set form (what the user sees in the fields). */
+/**
+ * Initial content of the set form. [loadText]/[repsText] are what the user has typed (initially empty);
+ * [suggestedLoad]/[suggestedReps] are shown as placeholders and used when the field is left empty.
+ */
 data class SetFormValues(
     val loadText: String,
     val repsText: String,
     val outcome: SetOutcome,
     /** Current RIR of the stepper (kept even for FAILURE so toggling back restores it). */
     val rir: Int,
+    val suggestedLoad: String? = null,
+    val suggestedReps: String? = null,
 )
 
 /** Pure (Android-free) parsing, validation and prefill helpers for the set form. */
@@ -33,7 +38,6 @@ object SetInput {
     const val MAX_REPS = 999
     const val MAX_RIR = 10
     const val DEFAULT_RIR = 2
-    const val LOAD_INCREMENT_KG = 2.5
 
     /** Parses a load in kg: "," or "." as separator, 0..[MAX_LOAD_KG], at most 2 decimals. */
     fun parseLoad(text: String): InputResult<Double> {
@@ -68,11 +72,21 @@ object SetInput {
     }
 
     fun formFrom(set: LoggedSet, defaultRir: Int): SetFormValues = SetFormValues(
-        loadText = formatLoad(set.loadKg),
-        repsText = set.reps.toString(),
+        loadText = "",
+        repsText = "",
         outcome = set.outcome,
         rir = set.rir ?: defaultRir,
+        suggestedLoad = formatLoad(set.loadKg),
+        suggestedReps = set.reps.toString(),
     )
+
+    /** Typed load, or [suggested] when the field is empty. Empty without a suggestion is EMPTY. */
+    fun resolveLoad(typed: String, suggested: String?): InputResult<Double> =
+        if (typed.isBlank() && suggested != null) parseLoad(suggested) else parseLoad(typed)
+
+    /** Typed reps, or [suggested] when the field is empty. Empty without a suggestion is EMPTY. */
+    fun resolveReps(typed: String, suggested: String?): InputResult<Int> =
+        if (typed.isBlank() && suggested != null) parseReps(suggested) else parseReps(typed)
 
     /**
      * Initial form values for set [setNumber] of [exercise]: previous logged set of this exercise in the
@@ -83,7 +97,6 @@ object SetInput {
         setNumber: Int,
         loggedInSession: List<LoggedSet>,
         lastPerformance: List<LoggedSet>,
-        increaseLoad: Boolean = false,
     ): SetFormValues {
         val rir = defaultRir(exercise.targetRir)
         val previous = loggedInSession.filter { it.setNumber < setNumber }.maxByOrNull { it.setNumber }
@@ -92,12 +105,18 @@ object SetInput {
         val source = lastPerformance.firstOrNull { it.setNumber == setNumber }
             ?: lastPerformance.lastOrNull()
             ?: return SetFormValues("", "", SetOutcome.BUFFER, rir)
-        val form = formFrom(source, rir)
-        return if (increaseLoad) form.copy(loadText = formatLoad(increasedLoad(source.loadKg))) else form
+        return formFrom(source, rir)
     }
 
-    /** [loadKg] plus [LOAD_INCREMENT_KG], capped at [MAX_LOAD_KG]. */
-    fun increasedLoad(loadKg: Double): Double = minOf(loadKg + LOAD_INCREMENT_KG, MAX_LOAD_KG)
+    /** Increments offered next to the increase hint, in kg. */
+    val INCREMENTS_KG = listOf(1.0, 2.5, 5.0)
+
+    /** [baseLoad] (a formatted load) plus [incrementKg], capped at [MAX_LOAD_KG]; [baseLoad] when no increment. */
+    fun suggestedLoadWith(baseLoad: String?, incrementKg: Double?): String? {
+        if (incrementKg == null || baseLoad == null) return baseLoad
+        val base = (parseLoad(baseLoad) as? InputResult.Valid)?.value ?: return baseLoad
+        return formatLoad(minOf(base + incrementKg, MAX_LOAD_KG))
+    }
 
     /** Upper bound of a rep range such as "6-8", "6–8" or "8"; null for anything else ("MAX", null). */
     fun repsUpperBound(targetReps: String?): Int? {

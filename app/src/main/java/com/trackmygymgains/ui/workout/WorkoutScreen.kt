@@ -29,6 +29,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -88,6 +89,9 @@ object WorkoutTags {
     const val FINISH_DISMISS = "workout_finish_dismiss"
     const val LAST_PERFORMANCE = "workout_last_performance"
     const val INCREASE_HINT = "workout_increase_hint"
+    const val INCREMENT_1 = "workout_increment_1"
+    const val INCREMENT_2_5 = "workout_increment_2_5"
+    const val INCREMENT_5 = "workout_increment_5"
     const val REST_BANNER ="workout_rest_banner"
     const val REST_LABEL = "workout_rest_label"
     const val REST_TIME = "workout_rest_time"
@@ -283,6 +287,9 @@ private fun ExerciseCard(
                     modifier = Modifier.testTag(WorkoutTags.LAST_PERFORMANCE),
                 )
             }
+            // Chips only while the suggestion still comes from the last performance.
+            val showIncrements = ui.suggestIncrease && ui.loggedSets.isEmpty()
+            var increment by rememberSaveable(ex.id) { mutableStateOf<Double?>(null) }
             if (ui.suggestIncrease) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -295,10 +302,26 @@ private fun ExerciseCard(
                         tint = MaterialTheme.colorScheme.tertiary,
                     )
                     Text(
-                        stringResource(R.string.workout_increase_hint, SetInput.formatLoad(SetInput.LOAD_INCREMENT_KG)),
+                        stringResource(R.string.workout_increase_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
+                }
+            }
+            if (showIncrements) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        Triple(1.0, WorkoutTags.INCREMENT_1, R.string.workout_increment_1),
+                        Triple(2.5, WorkoutTags.INCREMENT_2_5, R.string.workout_increment_2_5),
+                        Triple(5.0, WorkoutTags.INCREMENT_5, R.string.workout_increment_5),
+                    ).forEach { (kg, tag, label) ->
+                        FilterChip(
+                            selected = increment == kg,
+                            onClick = { increment = if (increment == kg) null else kg },
+                            label = { Text(stringResource(label)) },
+                            modifier = Modifier.testTag(tag),
+                        )
+                    }
                 }
             }
             if (ex.restSeconds == null && restIdle) {
@@ -340,6 +363,7 @@ private fun ExerciseCard(
                         key(ex.id, n) {
                             SetForm(
                                 initial = ui.currentForm,
+                                incrementKg = if (showIncrements) increment else null,
                                 submitLabel = stringResource(R.string.workout_complete_set),
                                 onSubmit = { l, r, o, rir -> onSubmitSet(ex.id, n, l, r, o, rir) },
                                 onCancel = null,
@@ -380,45 +404,62 @@ private fun errorText(error: InputError?, loadField: Boolean): String? = when (e
         stringResource(if (loadField) R.string.workout_error_load_range else R.string.workout_error_reps_range)
 }
 
+/** Placeholder of the load/reps fields: a lighter color so it reads as a suggestion, not as typed text. */
+@Composable
+private fun SuggestionText(text: String) {
+    Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+}
+
 @Composable
 private fun SetForm(
     initial: SetFormValues,
     submitLabel: String,
     onSubmit: (Double, Int, SetOutcome, Int?) -> Unit,
     onCancel: (() -> Unit)?,
+    incrementKg: Double? = null,
 ) {
-    var load by rememberSaveable(initial) { mutableStateOf(initial.loadText) }
+    // Changing the increment resets (clears) the typed load so the new suggestion is visible.
+    var load by rememberSaveable(initial, incrementKg) { mutableStateOf(initial.loadText) }
     var reps by rememberSaveable(initial) { mutableStateOf(initial.repsText) }
     var isBuffer by rememberSaveable(initial) { mutableStateOf(initial.outcome == SetOutcome.BUFFER) }
     var rir by rememberSaveable(initial) { mutableIntStateOf(initial.rir) }
+    val suggestedLoad = SetInput.suggestedLoadWith(initial.suggestedLoad, incrementKg)
 
-    val loadResult = SetInput.parseLoad(load)
-    val repsResult = SetInput.parseReps(reps)
+    val loadResult = SetInput.resolveLoad(load, suggestedLoad)
+    val repsResult = SetInput.resolveReps(reps, initial.suggestedReps)
     val loadMessage = errorText((loadResult as? InputResult.Invalid)?.error, loadField = true)
     val repsMessage = errorText((repsResult as? InputResult.Invalid)?.error, loadField = false)
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = load,
-                onValueChange = { load = it },
-                label = { Text(stringResource(R.string.workout_load_label)) },
-                isError = loadMessage != null,
-                supportingText = loadMessage?.let { { Text(it) } },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f).testTag(WorkoutTags.LOAD_FIELD),
-            )
-            OutlinedTextField(
-                value = reps,
-                onValueChange = { reps = it },
-                label = { Text(stringResource(R.string.workout_reps_label)) },
-                isError = repsMessage != null,
-                supportingText = repsMessage?.let { { Text(it) } },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f).testTag(WorkoutTags.REPS_FIELD),
-            )
+            // The label sits above the field (not inside it): a Material label hides the placeholder
+            // until the field is focused, and the suggestion must be visible at once.
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.workout_load_label), style = MaterialTheme.typography.labelMedium)
+                OutlinedTextField(
+                    value = load,
+                    onValueChange = { load = it },
+                    placeholder = suggestedLoad?.let { { SuggestionText(it) } },
+                    isError = loadMessage != null,
+                    supportingText = loadMessage?.let { { Text(it) } },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth().testTag(WorkoutTags.LOAD_FIELD),
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.workout_reps_label), style = MaterialTheme.typography.labelMedium)
+                OutlinedTextField(
+                    value = reps,
+                    onValueChange = { reps = it },
+                    placeholder = initial.suggestedReps?.let { { SuggestionText(it) } },
+                    isError = repsMessage != null,
+                    supportingText = repsMessage?.let { { Text(it) } },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().testTag(WorkoutTags.REPS_FIELD),
+                )
+            }
         }
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SegmentedButton(
