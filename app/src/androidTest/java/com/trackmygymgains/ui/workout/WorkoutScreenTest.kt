@@ -148,6 +148,13 @@ class WorkoutScreenTest {
     }
 
     @Test
+    fun completedBufferSetWithoutRirShowsNd() {
+        show(ui(logged = listOf(logged(1, 80.0, 8, SetOutcome.BUFFER, null))))
+
+        rule.onNodeWithText("1 · 80 kg × 8 · Buffer RIR n/d").assertIsDisplayed()
+    }
+
+    @Test
     fun tappingCompletedSetRequestsEdit() {
         val submitted = Submitted()
         show(ui(logged = listOf(logged(1, 80.0, 8, SetOutcome.BUFFER, 2))), submitted)

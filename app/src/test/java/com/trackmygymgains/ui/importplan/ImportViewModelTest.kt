@@ -168,7 +168,7 @@ class ImportViewModelTest {
         vm.onFilePicked("content://x")
         vm.confirm()
 
-        assertEquals(ImportUiState.Imported, vm.state.first { it is ImportUiState.Imported || it is ImportUiState.Error })
+        assertTrue(vm.state.first { it is ImportUiState.Imported || it is ImportUiState.Error } is ImportUiState.Imported)
         val plan = repo.getActivePlan()!!
         assertEquals(REFERENCE_SHEET_NAME, plan.name)
         assertEquals("scheda.xlsx", plan.sourceFileName)

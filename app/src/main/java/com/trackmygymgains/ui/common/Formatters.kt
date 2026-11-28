@@ -1,6 +1,7 @@
 package com.trackmygymgains.ui.common
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -29,3 +30,17 @@ fun formatSessionDateTime(epochMillis: Long, zone: ZoneId, locale: Locale): Stri
     Instant.ofEpochMilli(epochMillis).atZone(zone).format(
         DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", locale),
     )
+
+/** Date only of a workout, e.g. "lun 13 ott 2026". Used for sessions imported from the plan (no real time). */
+fun formatSessionDate(epochMillis: Long, zone: ZoneId, locale: Locale): String =
+    Instant.ofEpochMilli(epochMillis).atZone(zone).format(DateTimeFormatter.ofPattern("EEE d MMM yyyy", locale))
+
+/** Date range of the imported history: "13 ott – 21 nov 2026", "13 ott 2026" for one day, years shown when they differ. */
+fun formatDateRange(from: LocalDate, to: LocalDate, locale: Locale): String {
+    val withYear = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
+    return when {
+        from == to -> from.format(withYear)
+        from.year == to.year -> from.format(DateTimeFormatter.ofPattern("d MMM", locale)) + " – " + to.format(withYear)
+        else -> from.format(withYear) + " – " + to.format(withYear)
+    }
+}

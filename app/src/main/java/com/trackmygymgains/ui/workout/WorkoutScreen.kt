@@ -322,7 +322,11 @@ private fun ExerciseCard(
 private fun setSummary(set: LoggedSet): String {
     val load = SetInput.formatLoad(set.loadKg)
     return if (set.outcome == SetOutcome.BUFFER) {
-        stringResource(R.string.workout_set_summary_buffer, set.setNumber, load, set.reps, set.rir ?: 0)
+        if (set.rir == null) {
+            stringResource(R.string.workout_set_summary_buffer_no_rir, set.setNumber, load, set.reps)
+        } else {
+            stringResource(R.string.workout_set_summary_buffer, set.setNumber, load, set.reps, set.rir)
+        }
     } else {
         stringResource(R.string.workout_set_summary_failure, set.setNumber, load, set.reps)
     }

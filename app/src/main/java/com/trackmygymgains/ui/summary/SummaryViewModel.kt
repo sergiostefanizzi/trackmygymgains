@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.stateIn
 data class SummaryExercise(
     val exercise: PlannedExercise,
     val loggedSets: List<LoggedSet>,
+    /** Free-text feedback of this exercise in the session (imported from the plan file), if any. */
+    val note: String? = null,
 )
 
 sealed interface SummaryUiState {
@@ -38,6 +40,9 @@ sealed interface SummaryUiState {
         val plannedSets: Int,
         val doneSets: Int,
         val exercises: List<SummaryExercise>,
+        /** True for a workout imported from the plan file: [startedAt] is only a date, no real duration. */
+        val imported: Boolean = false,
+        val startedAt: Long = 0L,
     ) : SummaryUiState
 }
 
@@ -63,8 +68,14 @@ class SummaryViewModel(
                 plannedSets = exercises.sumOf { it.sets },
                 doneSets = session.sets.size,
                 exercises = exercises.map { ex ->
-                    SummaryExercise(ex, session.sets.filter { it.plannedExerciseId == ex.id }.sortedBy { it.setNumber })
+                    SummaryExercise(
+                        ex,
+                        session.sets.filter { it.plannedExerciseId == ex.id }.sortedBy { it.setNumber },
+                        session.notes[ex.id],
+                    )
                 },
+                imported = session.imported,
+                startedAt = session.startedAt,
             ),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SummaryUiState.Loading)

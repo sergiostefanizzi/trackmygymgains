@@ -52,7 +52,8 @@ sealed interface ImportUiState {
 
     data class Error(val message: String) : ImportUiState
 
-    data object Imported : ImportUiState
+    /** [message] is the result shown to the user, e.g. "Scheda importata · 9 allenamenti dello storico aggiunti, 2 già presenti". */
+    data class Imported(val message: String) : ImportUiState
 }
 
 class ImportViewModel(
@@ -107,9 +108,11 @@ class ImportViewModel(
         _state.value = current.copy(importing = true)
         job = viewModelScope.launch {
             try {
-                planRepository.importPlan(plan, current.fileName)
+                val result = planRepository.importPlan(plan, current.fileName)
                 workbook = null
-                _state.value = ImportUiState.Imported
+                _state.value = ImportUiState.Imported(
+                    ImportMessages.imported(result.importedSessions, result.skippedDuplicates),
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TrackMyGymGains: an Android app (Kotlin + Jetpack Compose, Material 3) to track gym workouts. The user imports their training plan from an `.xlsx` file, starts a workout, logs each set (load, reps, **Buffer** with RIR or **Cedimento**/failure) and a rest timer starts automatically with the REST time the plan defines for that exercise. UI strings are Italian (`res/values/strings.xml`).
 
-The work is organised in milestones (M0 setup ✅, M1 xlsx import ✅, G1 Google Sheets import ✅, M2 workout logging ✅, M3 rest timer ✅, M4 history ✅). Each subtask is closed only when its tests pass, then committed with a concise conventional message and pushed to `origin/dev` (not `main`).
+The work is organised in milestones (M0 setup ✅, M1 xlsx import ✅, G1 Google Sheets import ✅, M2 workout logging ✅, M3 rest timer ✅, M4 history ✅; v0.2.0: M5 history import from the sheet ✅). Each subtask is closed only when its tests pass, then committed with a concise conventional message and pushed to `origin/dev` (not `main`).
 
 ## Commands (Windows, PowerShell)
 
@@ -38,15 +38,16 @@ Single `:app` module, package `com.trackmygymgains`. Manual DI: `TrackMyGymGains
 
 Planned layers:
 - `data/xlsx/` — `XlsxReader` (custom reader on `java.util.zip` + `javax.xml`, **no Apache POI**, so it runs identically in plain JVM tests) → cell grid; `WorkoutPlanParser` → days and exercises.
-- `data/db/` + `data/repo/` — Room entities `WorkoutPlan`, `WorkoutDay`, `PlannedExercise`, `WorkoutSession`, `SetLog` (`outcome` BUFFER|FAILURE, `rir` only for BUFFER); `PlanRepository` (import in one transaction, new plan becomes the only active one), `SessionRepository`.
+- `data/db/` + `data/repo/` — Room entities `WorkoutPlan`, `WorkoutDay`, `PlannedExercise`, `WorkoutSession`, `SetLog` (`outcome` BUFFER|FAILURE, `rir` only for BUFFER; null also for imported sets with RIR not recorded), `ExerciseNote` (per session+exercise, from the sheet FEEDBACK); `WorkoutSession.imported` marks sessions created from the sheet (date only, noon local time, no duration). Schema v3. `PlanRepository` (import of plan + history in one transaction, new plan becomes the only active one, history sessions skipped when a finished session with the same day name and local date exists), `SessionRepository`.
 - `ui/importplan`, `ui/home`, `ui/workout`, `ui/history`.
 - `timer/` — app-wide `RestTimer` (`AppContainer.restTimer`) based on an end timestamp with an injectable clock, persisted via `RestTimerStore` (SharedPreferences; `InMemoryRestTimerStore` in tests) so it survives rotation/process death. States Idle → Running → Finished(restored) → Idle. No foreground service while counting down: `RestNotifier` (started in `TrackMyGymGainsApp.onCreate`) mirrors the state into an ongoing chronometer notification with −15/+15/Salta actions (`RestTimerActionReceiver`) and an exact `AlarmManager` alarm at the end. `RestTimerAlarmReceiver` → `RestEndHandler` is the single source of the end-of-rest alarm: it starts `RestAlarmService` (foreground, specialUse) which shows "Recupero terminato" with a "Ferma" action and vibrates repeatedly (alarm usage) while the timer is `Finished`; `RestNotifier` stops it when the state leaves Finished (Ferma → `acknowledgeFinished`, new rest, Salta). Safety cap 60 s. Falls back to a one-shot vibration + plain notification if the service cannot start. Stale alarms (after Salta/Ferma/adjust) are ignored and deduped per end. `adjust` keeps `totalSeconds` at the planned rest (grows only past it).
 
 ### Plan file format (`.xlsx`)
 
-The reference is the **first (most recent) sheet**; older sheets in the user's file use obsolete layouts and are not supported. Only the plan is imported, not the weekly history (columns from `CARICO W1` onwards are ignored).
+The reference is the **first (most recent) sheet**; older sheets in the user's file use obsolete layouts and are not supported. The plan and its weekly history are imported (`HistoryParser`).
 - A sheet holds repeated day blocks: a title row (col A: `FULL BODY 1`, …), then a header row `ESERCIZIO | SET | TARGET REP | TARGET RIR | REST | NOTE | CARICO W1 …`, then one row per exercise until col A is empty.
 - Locate columns by header label, not position. SET `3.0` → 3 (tolerate `1 + 2` → 3). REST `3'` → 180 s, `30"` → 30 s, `1'30"` → 90 s, `/` or empty → null (jump set: no automatic timer). NOTE `/` → null.
+- History: week n = columns `CARICO Wn | REP Wn | RIR Wn | FEEDBACK Wn` (labels may have trailing spaces); its date is `dd/MM/yyyy` in the title row above that week (`SETTIMANA n / DATA: …`). Weeks are not in chronological order: sort by date. REP `8 / 8 / 7` = one set per value; CARICO is one value for all sets or one per set (fewer values → last repeats), `,` or `.` decimals. RIR is one value per exercise: 0 → Cedimento, ≥ 1 → Buffer, empty → Buffer with RIR not recorded. A week with data but no valid date is skipped with a warning.
 
 ## Test data and private files
 

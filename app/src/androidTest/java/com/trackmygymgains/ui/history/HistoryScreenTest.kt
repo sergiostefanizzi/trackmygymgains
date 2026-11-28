@@ -80,6 +80,32 @@ class HistoryScreenTest {
     }
 
     @Test
+    fun importedCardShowsDateOnlyImportedLabelAndNoDuration() {
+        val imported = HistoryItem(
+            sessionId = 3,
+            dayName = "FULL BODY 3",
+            startedAt = Instant.parse("2026-10-13T12:00:00Z").toEpochMilli(),
+            durationMillis = 0,
+            doneSets = 4,
+            plannedSets = 9,
+            imported = true,
+        )
+        setContent(HistoryUiState.Content(listOf(imported)), Calls())
+
+        rule.onNodeWithText("mar 13 ott 2026").assertIsDisplayed()
+        rule.onNodeWithText("Importato").assertIsDisplayed()
+        rule.onNodeWithTag(HistoryTags.DURATION).assertDoesNotExist()
+        rule.onNodeWithText("4/9 serie").assertIsDisplayed()
+    }
+
+    @Test
+    fun appCardHasNoImportedLabel() {
+        setContent(HistoryUiState.Content(items), Calls())
+
+        rule.onNodeWithTag(HistoryTags.IMPORTED).assertDoesNotExist()
+    }
+
+    @Test
     fun emptyStateWhenNothingFinished() {
         setContent(HistoryUiState.Content(emptyList()), Calls())
 
