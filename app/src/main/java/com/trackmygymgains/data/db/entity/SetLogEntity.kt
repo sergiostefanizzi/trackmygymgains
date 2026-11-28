@@ -37,7 +37,7 @@ data class SetLogEntity(
     val loadKg: Double,
     val reps: Int,
     val outcome: SetOutcome,
-    /** Only for BUFFER; null for FAILURE. */
+    /** Only for BUFFER; null for FAILURE or when not recorded (imported sets). */
     val rir: Int?,
     /** Epoch millis. */
     val completedAt: Long,

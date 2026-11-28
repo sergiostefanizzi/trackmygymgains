@@ -5,10 +5,13 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.trackmygymgains.data.db.entity.ExerciseNoteEntity
 import com.trackmygymgains.data.db.entity.SetLogEntity
 import com.trackmygymgains.data.db.entity.WorkoutSessionEntity
 import com.trackmygymgains.data.db.relation.SessionWithSets
 import kotlinx.coroutines.flow.Flow
+
+data class FinishedSessionKey(val dayName: String, val startedAt: Long)
 
 @Dao
 interface SessionDao {
@@ -53,6 +56,22 @@ interface SessionDao {
 
     @Query("SELECT * FROM set_log WHERE sessionId = :sessionId AND plannedExerciseId = :plannedExerciseId AND setNumber = :setNumber")
     suspend fun findSet(sessionId: Long, plannedExerciseId: Long, setNumber: Int): SetLogEntity?
+
+    @Insert
+    suspend fun insertSets(sets: List<SetLogEntity>)
+
+    @Insert
+    suspend fun insertNote(note: ExerciseNoteEntity): Long
+
+    /** (day name, startedAt) of every finished session, used to detect duplicates on history import. */
+    @Query(
+        """
+        SELECT wd.name AS dayName, ws.startedAt AS startedAt FROM workout_session ws
+        JOIN workout_day wd ON wd.id = ws.dayId
+        WHERE ws.endedAt IS NOT NULL
+        """,
+    )
+    suspend fun finishedSessionKeys(): List<FinishedSessionKey>
 
     @Insert
     suspend fun insertSet(set: SetLogEntity): Long

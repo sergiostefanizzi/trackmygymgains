@@ -42,7 +42,7 @@ class PlanDaoDeviceTest {
 
     @Test
     fun importReferencePlanAndReadItBack() = runBlocking {
-        val id = repo.importPlan(ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList()), "scheda.xlsx")
+        val id = repo.importPlan(ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList()), "scheda.xlsx").planId
 
         val plan = repo.getActivePlan()!!
         assertEquals(id, plan.id)
@@ -64,7 +64,7 @@ class PlanDaoDeviceTest {
 
     @Test
     fun deletingPlanCascadesToDaysAndExercises() = runBlocking {
-        val id = repo.importPlan(ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList()), null)
+        val id = repo.importPlan(ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList()), null).planId
         assertEquals(3, countRows("workout_day"))
         assertEquals(referencePlanExpected.sumOf { it.exercises.size }, countRows("planned_exercise"))
 

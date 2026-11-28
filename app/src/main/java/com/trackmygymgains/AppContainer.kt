@@ -27,12 +27,13 @@ class AppContainer(
     },
     private val restTimerStoreFactory: (Context) -> RestTimerStore = { ctx -> SharedPreferencesRestTimerStore(ctx) },
     private val clock: Clock = Clock.systemUTC(),
+    private val zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
 ) {
     private val appContext = context.applicationContext ?: context
 
     val database: AppDatabase by lazy { databaseFactory(appContext) }
 
-    val planRepository: PlanRepository by lazy { PlanRepository(database) }
+    val planRepository: PlanRepository by lazy { PlanRepository(database, zone = zone) }
 
     val sessionRepository: SessionRepository by lazy { SessionRepository(database) }
 

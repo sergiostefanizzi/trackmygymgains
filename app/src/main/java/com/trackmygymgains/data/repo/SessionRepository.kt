@@ -128,6 +128,8 @@ class SessionRepository(
         startedAt = session.startedAt,
         endedAt = session.endedAt,
         sets = sets.sortedWith(compareBy({ it.plannedExerciseId }, { it.setNumber })).map { it.toDomain() },
+        imported = session.imported,
+        notes = notes.associate { it.plannedExerciseId to it.note },
     )
 
     private fun SetLogEntity.toDomain(): LoggedSet = LoggedSet(

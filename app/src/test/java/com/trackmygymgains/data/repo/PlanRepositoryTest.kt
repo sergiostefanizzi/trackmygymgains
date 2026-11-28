@@ -70,7 +70,7 @@ class PlanRepositoryTest {
 
     @Test
     fun importRoundTripsReferencePlanExactly() = runTest {
-        val id = repo.importPlan(referenceParsed(), sourceFileName = "scheda.xlsx")
+        val id = repo.importPlan(referenceParsed(), sourceFileName = "scheda.xlsx").planId
 
         val plan = repo.getActivePlan()!!
         assertEquals(id, plan.id)
@@ -97,8 +97,8 @@ class PlanRepositoryTest {
 
     @Test
     fun secondImportBecomesOnlyActiveAndFirstIsKept() = runTest {
-        val firstId = repo.importPlan(referenceParsed(), sourceFileName = "a.xlsx")
-        val secondId = repo.importPlan(otherPlan, sourceFileName = "b.xlsx", planName = "Scheda nuova")
+        val firstId = repo.importPlan(referenceParsed(), sourceFileName = "a.xlsx").planId
+        val secondId = repo.importPlan(otherPlan, sourceFileName = "b.xlsx", planName = "Scheda nuova").planId
 
         val active = repo.getActivePlan()!!
         assertEquals(secondId, active.id)
@@ -136,7 +136,7 @@ class PlanRepositoryTest {
 
     @Test
     fun failedImportRollsBackAndKeepsPreviousPlanActive() = runTest {
-        val firstId = repo.importPlan(referenceParsed(), sourceFileName = "a.xlsx")
+        val firstId = repo.importPlan(referenceParsed(), sourceFileName = "a.xlsx").planId
 
         // A trigger that aborts the insert of one specific exercise, i.e. midway through the import
         // (after the new plan row and its first day were already written).
