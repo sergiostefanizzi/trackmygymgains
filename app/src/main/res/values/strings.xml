@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TrackMyGymGains</string>
+
+    <!-- Import -->
+    <string name="import_title">Importa scheda</string>
+    <string name="import_back">Indietro</string>
+    <string name="import_intro">Carica la tua scheda di allenamento: vanno bene file .xlsx e Fogli Google di Drive. Vengono importati i giorni con esercizi, serie, ripetizioni target, RIR, recuperi e note del foglio scelto (di default il primo).</string>
+    <string name="import_pick_file">Scegli file .xlsx</string>
+    <string name="import_pick_other_file">Scegli un altro file</string>
+    <string name="import_loading">Lettura del file…</string>
+    <string name="import_file_name">File: %1$s</string>
+    <string name="import_sheet_label">Foglio</string>
+    <string name="import_confirm">Importa scheda</string>
+    <string name="import_confirm_replace">Importa e sostituisci scheda attuale</string>
+    <string name="import_replace_hint">La nuova scheda diventerà quella attiva. La scheda attuale resta salvata ma non verrà più usata.</string>
+    <string name="import_warnings_title">Avvisi (%1$d)</string>
+    <string name="import_warning_row">Riga %1$d: %2$s</string>
+    <string name="import_importing">Importazione in corso…</string>
+
+    <!-- Exercise details -->
+    <string name="exercise_sets_reps">%1$d × %2$s</string>
+    <string name="exercise_sets_only">%1$d serie</string>
+    <string name="exercise_rir">RIR %1$s</string>
+    <string name="exercise_rest">Recupero %1$s</string>
+    <string name="exercise_no_rest">Nessun recupero</string>
+    <plurals name="exercises_count">
+        <item quantity="one">%1$d esercizio</item>
+        <item quantity="other">%1$d esercizi</item>
+    </plurals>
+
+    <!-- Home -->
+    <string name="home_menu">Altre opzioni</string>
+    <string name="home_import_new">Importa nuova scheda</string>
+    <string name="home_day_summary">%1$s · %2$s</string>
+    <string name="home_start_workout">Inizia allenamento</string>
+    <string name="home_start_disabled_hint">Hai già un allenamento in corso: terminalo o annullalo per iniziarne un altro.</string>
+    <string name="home_open_session_title">Allenamento in corso</string>
+    <string name="home_open_session_summary">%1$s · iniziato alle %2$s</string>
+    <string name="home_resume">Riprendi</string>
+    <string name="home_cancel_session">Annulla allenamento</string>
+    <string name="home_cancel_dialog_title">Annullare l\'allenamento?</string>
+    <string name="home_cancel_dialog_text">L\'allenamento in corso e le serie registrate fino a ora verranno eliminati.</string>
+    <string name="home_cancel_confirm">Sì, annulla</string>
+    <string name="home_cancel_dismiss">Non annullare</string>
+
+    <!-- Workout -->
+    <string name="workout_back">Indietro</string>
+    <string name="workout_target_sets_reps">%1$d × %2$s</string>
+    <string name="workout_target_sets_only">%1$d serie</string>
+    <string name="workout_target_rir">RIR %1$s</string>
+    <string name="workout_target_rest">Rec. %1$s</string>
+    <string name="workout_jump_set">Jump set</string>
+    <string name="workout_progress">%1$d/%2$d serie</string>
+    <string name="workout_set_summary_buffer">%1$d · %2$s kg × %3$d · Buffer RIR %4$d</string>
+    <string name="workout_set_summary_failure">%1$d · %2$s kg × %3$d · Cedimento</string>
+    <string name="workout_set_pending">Serie %1$d</string>
+    <string name="workout_load_label">Carico (kg)</string>
+    <string name="workout_reps_label">Ripetizioni</string>
+    <string name="workout_outcome_buffer">Buffer</string>
+    <string name="workout_outcome_failure">Cedimento</string>
+    <string name="workout_rir_label">RIR</string>
+    <string name="workout_rir_decrease">Diminuisci RIR</string>
+    <string name="workout_rir_increase">Aumenta RIR</string>
+    <string name="workout_complete_set">Completa serie</string>
+    <string name="workout_save_set">Salva</string>
+    <string name="workout_cancel_edit">Annulla</string>
+    <string name="workout_error_not_a_number">Numero non valido</string>
+    <string name="workout_error_decimals">Massimo 2 decimali</string>
+    <string name="workout_error_load_range">Massimo 1000 kg</string>
+    <string name="workout_error_reps_range">Da 1 a 999 ripetizioni</string>
+    <string name="workout_not_found">Allenamento non trovato</string>
+    <string name="workout_rest_start_manual">Avvia recupero %1$s</string>
+    <string name="workout_rest_finished">Recupero terminato</string>
+    <string name="workout_rest_minus">−15 s</string>
+    <string name="workout_rest_plus">+15 s</string>
+    <string name="workout_rest_skip">Salta</string>
+    <string name="workout_rest_stop">Ferma</string>
+    <string name="workout_finish">Termina allenamento</string>
+    <string name="workout_finish_dialog_title">Terminare l\'allenamento?</string>
+    <string name="workout_finish_dialog_missing">Hai completato %1$d serie su %2$d. Vuoi terminare l\'allenamento?</string>
+    <string name="workout_finish_dialog_complete">Hai completato tutte le serie. Vuoi terminare l\'allenamento?</string>
+    <string name="workout_finish_confirm">Termina</string>
+    <string name="workout_finish_dismiss">Continua</string>
+
+    <!-- Summary -->
+    <string name="summary_title">Riepilogo allenamento</string>
+    <string name="summary_not_found">Riepilogo non disponibile</string>
+    <string name="summary_duration">Durata: %1$s</string>
+    <string name="summary_sets_done">%1$d/%2$d serie</string>
+    <string name="summary_no_sets">Nessuna serie registrata</string>
+    <string name="summary_set_buffer">%1$s kg × %2$d · Buffer RIR %3$d</string>
+    <string name="summary_set_failure">%1$s kg × %2$d · Cedimento</string>
+    <string name="summary_home">Torna alla home</string>
+    <string name="summary_back">Indietro</string>
+
+    <!-- History -->
+    <string name="home_history">Storico allenamenti</string>
+    <string name="history_title">Storico</string>
+    <string name="history_back">Indietro</string>
+    <string name="history_empty">Nessun allenamento completato</string>
+    <string name="history_sets_only">%1$d serie</string>
+    <string name="history_delete">Elimina</string>
+    <string name="history_delete_title">Eliminare l\'allenamento?</string>
+    <string name="history_delete_text">Le serie registrate verranno cancellate.</string>
+    <string name="history_delete_confirm">Elimina</string>
+    <string name="history_delete_dismiss">Annulla</string>
+
+    <!-- Rest timer notifications -->
+    <string name="notif_channel_rest_running">Recupero in corso</string>
+    <string name="notif_channel_rest_done">Fine recupero</string>
+    <string name="notif_rest_title_default">Recupero</string>
+    <string name="notif_rest_done_title">Recupero terminato</string>
+    <string name="notif_rest_done_text">Pronto per la serie successiva</string>
+</resources>
