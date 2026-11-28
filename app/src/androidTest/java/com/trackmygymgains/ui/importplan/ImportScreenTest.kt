@@ -91,6 +91,29 @@ class ImportScreenTest {
         rule.onNodeWithTag(ImportTags.SHEET_SELECTOR).assertDoesNotExist()
     }
 
+    private fun historySession(date: String) = com.trackmygymgains.data.plan.ParsedHistorySession(
+        dayIndex = 0,
+        week = 1,
+        date = java.time.LocalDate.parse(date),
+        exercises = emptyList(),
+    )
+
+    @Test
+    fun previewShowsHistoryCountAndDateRange() {
+        val history = listOf(historySession("2026-11-21"), historySession("2026-10-13"))
+        show(preview(plan = ParsedPlan(REFERENCE_SHEET_NAME, referencePlanExpected, emptyList(), history)))
+
+        rule.onNodeWithTag(ImportTags.HISTORY_INFO).assertIsDisplayed()
+        rule.onNodeWithText("Storico: 2 allenamenti (13 ott – 21 nov 2026)").assertIsDisplayed()
+    }
+
+    @Test
+    fun previewWithoutHistorySaysSo() {
+        show(preview())
+
+        rule.onNodeWithText("Nessuno storico trovato").assertIsDisplayed()
+    }
+
     @Test
     fun warningsAreShownInCard() {
         show(preview(warnings = listOf(ParseWarning(7, "Qualcosa non va"))))

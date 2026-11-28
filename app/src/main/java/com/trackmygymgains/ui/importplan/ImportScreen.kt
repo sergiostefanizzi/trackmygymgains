@@ -1,5 +1,6 @@
 package com.trackmygymgains.ui.importplan
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -48,7 +50,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.trackmygymgains.R
 import com.trackmygymgains.data.plan.ParsedDay
 import com.trackmygymgains.data.plan.ParsedExercise
+import com.trackmygymgains.data.plan.ParsedHistorySession
+import com.trackmygymgains.ui.common.formatDateRange
 import com.trackmygymgains.ui.common.formatRest
+import java.util.Locale
 
 object ImportTags {
     const val PICK_FILE = "import_pick_file"
@@ -61,6 +66,7 @@ object ImportTags {
     const val WARNINGS = "import_warnings"
     const val CONFIRM = "import_confirm"
     const val REPLACE_HINT = "import_replace_hint"
+    const val HISTORY_INFO = "import_history_info"
 }
 
 private val XLSX_MIME_TYPES = arrayOf(
@@ -84,8 +90,12 @@ fun ImportRoute(
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) viewModel.onFilePicked(uri.toString())
     }
+    val context = LocalContext.current
     LaunchedEffect(state) {
-        if (state is ImportUiState.Imported) onImported()
+        (state as? ImportUiState.Imported)?.let {
+            Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
+            onImported()
+        }
     }
     ImportScreen(
         state = state,
@@ -134,7 +144,7 @@ fun ImportScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (state) {
                 ImportUiState.Idle -> IdleContent(onPickFile)
-                ImportUiState.Loading, ImportUiState.Imported -> Box(
+                ImportUiState.Loading, is ImportUiState.Imported -> Box(
                     Modifier.fillMaxSize().testTag(ImportTags.LOADING),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -270,7 +280,25 @@ private fun PreviewContent(state: ImportUiState.Preview, onSelectSheet: (Int) ->
                 }
             }
         }
+        state.plan?.let { plan ->
+            Text(
+                historyInfoText(plan.history),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.testTag(ImportTags.HISTORY_INFO),
+            )
+        }
         state.plan?.days?.forEach { DayPreview(it) }
+    }
+}
+
+@Composable
+private fun historyInfoText(history: List<ParsedHistorySession>): String {
+    if (history.isEmpty()) return stringResource(R.string.import_history_none)
+    val range = formatDateRange(history.minOf { it.date }, history.maxOf { it.date }, Locale.ITALIAN)
+    return if (history.size == 1) {
+        stringResource(R.string.import_history_one, range)
+    } else {
+        stringResource(R.string.import_history_many, history.size, range)
     }
 }
 

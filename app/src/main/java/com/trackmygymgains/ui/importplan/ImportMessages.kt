@@ -10,4 +10,17 @@ internal object ImportMessages {
         "Questo file Google non può essere convertito in .xlsx. Aprilo in Fogli Google e scaricalo come .xlsx (File › Scarica › Microsoft Excel)."
     const val SHEET_UNREADABLE = "Questo foglio non può essere letto. Prova a sceglierne un altro."
     const val SAVE_FAILED = "Impossibile salvare la scheda. Riprova."
+
+    /** Success message; zero counts are left out, and the history part is omitted when both are zero. */
+    fun imported(importedSessions: Int, skippedDuplicates: Int): String {
+        val base = "Scheda importata"
+        if (importedSessions == 0 && skippedDuplicates == 0) return base
+        val present = if (skippedDuplicates == 1) "1 già presente" else "$skippedDuplicates già presenti"
+        if (importedSessions == 0) {
+            val sessions = if (skippedDuplicates == 1) "1 allenamento" else "$skippedDuplicates allenamenti"
+            return "$base · storico già presente ($sessions)"
+        }
+        val added = if (importedSessions == 1) "1 allenamento dello storico aggiunto" else "$importedSessions allenamenti dello storico aggiunti"
+        return if (skippedDuplicates == 0) "$base · $added" else "$base · $added, $present"
+    }
 }

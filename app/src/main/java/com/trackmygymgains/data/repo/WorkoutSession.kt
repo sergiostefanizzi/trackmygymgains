@@ -10,6 +10,9 @@ data class WorkoutSession(
     val startedAt: Long,
     val endedAt: Long?,
     val sets: List<LoggedSet>,
+    val imported: Boolean = false,
+    /** plannedExerciseId to the free-text feedback of that exercise. */
+    val notes: Map<Long, String> = emptyMap(),
 )
 
 data class LoggedSet(
@@ -19,7 +22,10 @@ data class LoggedSet(
     val loadKg: Double,
     val reps: Int,
     val outcome: SetOutcome,
-    /** Only for BUFFER; null for FAILURE. */
+    /** Only for BUFFER; null for FAILURE or when not recorded (imported sets). */
     val rir: Int?,
     val completedAt: Long,
 )
+
+/** Sets of the most recent finished session that logged an exercise, with that session's start time (epoch millis). */
+data class LastPerformance(val startedAt: Long, val sets: List<LoggedSet>)

@@ -1,5 +1,6 @@
 package com.trackmygymgains.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -31,4 +32,6 @@ data class WorkoutSessionEntity(
     val startedAt: Long,
     /** Epoch millis; null while the session is open. */
     val endedAt: Long?,
+    /** True for sessions created from the history stored in the imported plan sheet. */
+    @ColumnInfo(defaultValue = "0") val imported: Boolean = false,
 )

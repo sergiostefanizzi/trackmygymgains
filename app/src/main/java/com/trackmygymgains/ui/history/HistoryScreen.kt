@@ -1,5 +1,6 @@
 package com.trackmygymgains.ui.history
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -37,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.trackmygymgains.R
 import com.trackmygymgains.ui.common.formatDuration
+import com.trackmygymgains.ui.common.formatSessionDate
 import com.trackmygymgains.ui.common.formatSessionDateTime
 import java.time.ZoneId
 import java.util.Locale
@@ -46,6 +49,8 @@ object HistoryTags {
     const val EMPTY = "history_empty"
     const val CARD = "history_card"
     const val DELETE = "history_delete"
+    const val IMPORTED = "history_imported"
+    const val DURATION = "history_duration"
     const val DELETE_CONFIRM = "history_delete_confirm"
     const val DELETE_DISMISS = "history_delete_dismiss"
 }
@@ -115,7 +120,11 @@ fun HistoryScreen(
                     items(state.items, key = { it.sessionId }) { item ->
                         HistoryCard(
                             item = item,
-                            dateText = formatSessionDateTime(item.startedAt, zone, locale),
+                            dateText = if (item.imported) {
+                                formatSessionDate(item.startedAt, zone, locale)
+                            } else {
+                                formatSessionDateTime(item.startedAt, zone, locale)
+                            },
                             onOpen = { onOpenSummary(item.sessionId) },
                             onDelete = { pendingDelete = item.sessionId },
                         )
@@ -176,10 +185,23 @@ private fun HistoryCard(
                     color = MaterialTheme.colorScheme.outline,
                 )
                 Text(item.dayName, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    stringResource(R.string.summary_duration, formatDuration(item.durationMillis)),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                if (item.imported) {
+                    Text(
+                        stringResource(R.string.history_imported),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier
+                            .testTag(HistoryTags.IMPORTED)
+                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                } else {
+                    Text(
+                        stringResource(R.string.summary_duration, formatDuration(item.durationMillis)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag(HistoryTags.DURATION),
+                    )
+                }
                 Text(setsText(item), style = MaterialTheme.typography.bodyMedium)
             }
             IconButton(onClick = onDelete, modifier = Modifier.testTag(HistoryTags.DELETE)) {

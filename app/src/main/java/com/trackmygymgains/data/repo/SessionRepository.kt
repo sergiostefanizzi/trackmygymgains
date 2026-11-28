@@ -121,6 +121,14 @@ class SessionRepository(
     suspend fun lastPerformance(exerciseName: String, excludeSessionId: Long? = null): List<LoggedSet> =
         dao.lastPerformance(exerciseName.trim(), excludeSessionId).map { it.toDomain() }
 
+    /** Like [lastPerformance] but also carries the date of the session; null when there is no history. */
+    suspend fun lastPerformanceWithDate(exerciseName: String, excludeSessionId: Long? = null): LastPerformance? {
+        val entities = dao.lastPerformance(exerciseName.trim(), excludeSessionId)
+        val sessionId = entities.firstOrNull()?.sessionId ?: return null
+        val startedAt = dao.getSession(sessionId)?.session?.startedAt ?: return null
+        return LastPerformance(startedAt, entities.map { it.toDomain() })
+    }
+
     private fun SessionWithSets.toDomain(): WorkoutSession = WorkoutSession(
         id = session.id,
         planId = session.planId,
@@ -128,6 +136,8 @@ class SessionRepository(
         startedAt = session.startedAt,
         endedAt = session.endedAt,
         sets = sets.sortedWith(compareBy({ it.plannedExerciseId }, { it.setNumber })).map { it.toDomain() },
+        imported = session.imported,
+        notes = notes.associate { it.plannedExerciseId to it.note },
     )
 
     private fun SetLogEntity.toDomain(): LoggedSet = LoggedSet(

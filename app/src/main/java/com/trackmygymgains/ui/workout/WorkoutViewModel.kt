@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.trackmygymgains.TrackMyGymGainsApp
 import com.trackmygymgains.data.model.SetOutcome
+import com.trackmygymgains.data.repo.LastPerformance
 import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.PlannedExercise
@@ -40,6 +41,10 @@ data class ExerciseUi(
     val currentForm: SetFormValues?,
     /** Logged set currently open for editing, if any. */
     val editingSet: Int?,
+    /** Most recent finished performance of this exercise (any plan), null when there is no history. */
+    val lastPerformance: LastPerformance? = null,
+    /** True when the last performance hit the top of the rep range in every planned set. */
+    val suggestIncrease: Boolean = false,
 )
 
 sealed interface WorkoutUiState {
@@ -87,7 +92,7 @@ class WorkoutViewModel(
         val day = planRepository.getDay(first.dayId)
         val exercises = day?.exercises.orEmpty()
         // Loaded once per exercise when the screen opens, not on every session update.
-        val history = exercises.associate { it.id to sessionRepository.lastPerformance(it.name, sessionId) }
+        val history = exercises.associate { it.id to sessionRepository.lastPerformanceWithDate(it.name, sessionId) }
         emitAll(
             combine(sessionRepository.observeSession(sessionId), editing) { session, editMap ->
                 if (session == null) {
@@ -99,14 +104,18 @@ class WorkoutViewModel(
                             val logged = session.sets.filter { it.plannedExerciseId == ex.id }
                                 .sortedBy { it.setNumber }
                             val current = (1..ex.sets).firstOrNull { n -> logged.none { it.setNumber == n } }
+                            val last = history[ex.id]
+                            val increase = SetInput.shouldSuggestIncrease(ex, last?.sets.orEmpty())
                             ExerciseUi(
                                 exercise = ex,
                                 loggedSets = logged,
                                 currentSet = current,
                                 currentForm = current?.let {
-                                    SetInput.prefill(ex, it, logged, history[ex.id].orEmpty())
+                                    SetInput.prefill(ex, it, logged, last?.sets.orEmpty())
                                 },
                                 editingSet = editMap[ex.id]?.takeIf { n -> logged.any { it.setNumber == n } },
+                                lastPerformance = last,
+                                suggestIncrease = increase,
                             )
                         },
                     )

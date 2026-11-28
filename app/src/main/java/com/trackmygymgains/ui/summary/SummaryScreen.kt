@@ -30,11 +30,17 @@ import com.trackmygymgains.R
 import com.trackmygymgains.data.model.SetOutcome
 import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.ui.common.formatDuration
+import com.trackmygymgains.ui.common.formatSessionDate
 import com.trackmygymgains.ui.workout.SetInput
+import java.time.ZoneId
+import java.util.Locale
 
 object SummaryTags {
     const val HOME = "summary_home"
     const val DURATION = "summary_duration"
+    const val DATE = "summary_date"
+    const val IMPORTED = "summary_imported"
+    const val NOTE = "summary_note"
     const val SETS_TOTAL = "summary_sets_total"
     const val EXERCISE_CARD = "summary_exercise_card"
 }
@@ -60,6 +66,8 @@ fun SummaryScreen(
     state: SummaryUiState,
     onHome: () -> Unit,
     fromHistory: Boolean = false,
+    zone: ZoneId = ZoneId.systemDefault(),
+    locale: Locale = Locale.ITALIAN,
 ) {
     Scaffold(
         topBar = {
@@ -79,11 +87,25 @@ fun SummaryScreen(
                                 stringResource(R.string.summary_title),
                                 style = MaterialTheme.typography.titleMedium,
                             )
-                            Text(
-                                stringResource(R.string.summary_duration, formatDuration(state.durationMillis)),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.testTag(SummaryTags.DURATION),
-                            )
+                            if (state.imported) {
+                                Text(
+                                    formatSessionDate(state.startedAt, zone, locale),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.testTag(SummaryTags.DATE),
+                                )
+                                Text(
+                                    stringResource(R.string.summary_imported),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.testTag(SummaryTags.IMPORTED),
+                                )
+                            } else {
+                                Text(
+                                    stringResource(R.string.summary_duration, formatDuration(state.durationMillis)),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.testTag(SummaryTags.DURATION),
+                                )
+                            }
                             Text(
                                 stringResource(R.string.summary_sets_done, state.doneSets, state.plannedSets),
                                 style = MaterialTheme.typography.bodyLarge,
@@ -139,6 +161,13 @@ private fun ExerciseSummaryCard(ex: SummaryExercise) {
             for (set in ex.loggedSets) {
                 Text(setLine(set), style = MaterialTheme.typography.bodyMedium)
             }
+            ex.note?.let {
+                Text(
+                    stringResource(R.string.summary_note, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.testTag(SummaryTags.NOTE),
+                )
+            }
         }
     }
 }
@@ -147,7 +176,11 @@ private fun ExerciseSummaryCard(ex: SummaryExercise) {
 private fun setLine(set: LoggedSet): String {
     val load = SetInput.formatLoad(set.loadKg)
     return if (set.outcome == SetOutcome.BUFFER) {
-        stringResource(R.string.summary_set_buffer, load, set.reps, set.rir ?: 0)
+        if (set.rir == null) {
+            stringResource(R.string.summary_set_buffer_no_rir, load, set.reps)
+        } else {
+            stringResource(R.string.summary_set_buffer, load, set.reps, set.rir)
+        }
     } else {
         stringResource(R.string.summary_set_failure, load, set.reps)
     }

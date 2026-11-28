@@ -2,6 +2,7 @@ package com.trackmygymgains.data.db.relation
 
 import androidx.room.Embedded
 import androidx.room.Relation
+import com.trackmygymgains.data.db.entity.ExerciseNoteEntity
 import com.trackmygymgains.data.db.entity.SetLogEntity
 import com.trackmygymgains.data.db.entity.WorkoutSessionEntity
 
@@ -10,4 +11,6 @@ data class SessionWithSets(
     @Embedded val session: WorkoutSessionEntity,
     @Relation(parentColumn = "id", entityColumn = "sessionId")
     val sets: List<SetLogEntity>,
+    @Relation(parentColumn = "id", entityColumn = "sessionId")
+    val notes: List<ExerciseNoteEntity>,
 )

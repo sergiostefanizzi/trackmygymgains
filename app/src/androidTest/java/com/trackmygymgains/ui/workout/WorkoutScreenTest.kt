@@ -3,6 +3,7 @@ package com.trackmygymgains.ui.workout
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -145,6 +146,13 @@ class WorkoutScreenTest {
 
         rule.onNodeWithText("1 · 80 kg × 8 · Buffer RIR 2").assertIsDisplayed()
         rule.onNodeWithText("2 · 82,5 kg × 6 · Cedimento").assertIsDisplayed()
+    }
+
+    @Test
+    fun completedBufferSetWithoutRirShowsNd() {
+        show(ui(logged = listOf(logged(1, 80.0, 8, SetOutcome.BUFFER, null))))
+
+        rule.onNodeWithText("1 · 80 kg × 8 · Buffer RIR n/d").assertIsDisplayed()
     }
 
     @Test
@@ -317,5 +325,146 @@ class WorkoutScreenTest {
         val jump = PlannedExercise(2, 1, "ADDUCTOR MACHINE", 2, "8-10", "1-2", null, null)
         showRest(ui(exercise = jump), RestTimerState.Running(0L, 60, 60_000L, "x"))
         rule.onNodeWithTag(WorkoutTags.REST_START_MANUAL).assertDoesNotExist()
+    }
+
+    private fun uiWithLast(
+        reps: List<Int>,
+        form: SetFormValues = SetFormValues("", "", SetOutcome.BUFFER, 1, "30", "8"),
+    ): WorkoutUiState.Ready {
+        val ex = exercise.copy(targetReps = "6-8")
+        val sets = reps.mapIndexed { i, r -> logged(i + 1, 30.0, r, SetOutcome.BUFFER, 1) }
+        val startedAt = java.time.ZonedDateTime.now().withMonth(1).withDayOfMonth(26).withHour(12)
+            .toInstant().toEpochMilli()
+        val base = ui(exercise = ex, form = form).exercises.first()
+        return WorkoutUiState.Ready(
+            "FULL BODY 1",
+            listOf(
+                base.copy(
+                    lastPerformance = com.trackmygymgains.data.repo.LastPerformance(startedAt, sets),
+                    suggestIncrease = SetInput.shouldSuggestIncrease(ex, sets),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun lastPerformanceLineAndIncreaseHintShownWhenAllAtMax() {
+        show(uiWithLast(listOf(8, 8, 8)))
+
+        rule.onNodeWithTag(WorkoutTags.LAST_PERFORMANCE)
+            .assertTextEquals("Ultima volta · 26 gen: 30 kg × 8 / 8 / 8 · RIR 1")
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertIsDisplayed()
+        rule.onNodeWithText("Hai raggiunto il massimo delle ripetizioni: prova ad aumentare il carico")
+            .assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("30")
+    }
+
+    @Test
+    fun lastPerformanceShownWithoutHintWhenBelowMax() {
+        show(uiWithLast(listOf(8, 7, 8), SetFormValues("", "", SetOutcome.BUFFER, 1, "30", "8")))
+
+        rule.onNodeWithTag(WorkoutTags.LAST_PERFORMANCE).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertDoesNotExist()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("30")
+    }
+
+    @Test
+    fun emptyFieldsSubmitSuggestedValues() {
+        val submitted = Submitted()
+        show(ui(form = SetFormValues("", "", SetOutcome.BUFFER, 1, "70", "9")), submitted)
+
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("70")
+        rule.onNodeWithTag(WorkoutTags.REPS_FIELD).assertTextContains("9")
+        rule.onNodeWithTag(WorkoutTags.SUBMIT).assertIsEnabled().performClick()
+
+        assertEquals(listOf(listOf(1L, 1, 70.0, 9, SetOutcome.BUFFER, 1)), submitted.calls)
+    }
+
+    @Test
+    fun typedValuesOverrideSuggestion() {
+        val submitted = Submitted()
+        show(ui(form = SetFormValues("", "", SetOutcome.BUFFER, 1, "70", "9")), submitted)
+
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).performTextInput("72,5")
+        rule.onNodeWithTag(WorkoutTags.SUBMIT).performClick()
+
+        assertEquals(listOf(listOf(1L, 1, 72.5, 9, SetOutcome.BUFFER, 1)), submitted.calls)
+    }
+
+    @Test
+    fun editingWithoutTypingKeepsLoggedValues() {
+        val submitted = Submitted()
+        show(ui(logged = listOf(logged(1, 80.0, 8, SetOutcome.BUFFER, 2)), editing = 1), submitted)
+
+        rule.onNodeWithTag(WorkoutTags.SUBMIT).performClick()
+
+        assertEquals(listOf(listOf(1L, 1, 80.0, 8, SetOutcome.BUFFER, 2)), submitted.calls)
+    }
+
+    @Test
+    fun incrementChipsChangeSuggestionAndToggle() {
+        val submitted = Submitted()
+        show(uiWithLast(listOf(8, 8, 8)), submitted)
+
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_1).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_2_5).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_5).assertIsDisplayed()
+        rule.onNodeWithText("+2,5 kg").assertIsDisplayed()
+
+        // typed text is cleared when a chip is selected
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).performTextInput("99")
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_5).performScrollTo().performClick()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("35")
+        rule.onNodeWithTag(WorkoutTags.SUBMIT).performScrollTo().performClick()
+        assertEquals(listOf(listOf(1L, 1, 35.0, 8, SetOutcome.BUFFER, 1)), submitted.calls)
+
+        // tapping again deselects: back to the history load
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_5).performScrollTo().performClick()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("30")
+        rule.onNodeWithTag(WorkoutTags.SUBMIT).performScrollTo().performClick()
+        assertEquals(listOf(1L, 1, 30.0, 8, SetOutcome.BUFFER, 1), submitted.calls.last())
+
+        // switching chips
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_1).performScrollTo().performClick()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("31")
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_2_5).performScrollTo().performClick()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("32,5")
+    }
+
+    @Test
+    fun incrementChipsHiddenOnceASetIsLogged() {
+        val base = uiWithLast(listOf(8, 8, 8))
+        val ex = base.exercises.first()
+        val state = WorkoutUiState.Ready(
+            base.dayName,
+            listOf(
+                ex.copy(
+                    loggedSets = listOf(logged(1, 30.0, 8, SetOutcome.BUFFER, 1)),
+                    currentSet = 2,
+                    currentForm = SetFormValues("", "", SetOutcome.BUFFER, 1, "30", "8"),
+                ),
+            ),
+        )
+        show(state)
+
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_1).assertDoesNotExist()
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_2_5).assertDoesNotExist()
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_5).assertDoesNotExist()
+    }
+
+    @Test
+    fun noIncrementChipsWithoutSuggestion() {
+        show(uiWithLast(listOf(8, 7, 8)))
+
+        rule.onNodeWithTag(WorkoutTags.INCREMENT_5).assertDoesNotExist()
+    }
+
+    @Test
+    fun noLastPerformanceLineWithoutHistory() {
+        show(ui())
+
+        rule.onNodeWithTag(WorkoutTags.LAST_PERFORMANCE).assertDoesNotExist()
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertDoesNotExist()
     }
 }

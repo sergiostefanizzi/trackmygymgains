@@ -9,6 +9,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.trackmygymgains.data.model.SetOutcome
 import com.trackmygymgains.data.repo.PlanRepository
 import com.trackmygymgains.data.repo.SessionRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -70,6 +71,47 @@ class MigrationTest {
         } finally {
             db.close()
             context.deleteDatabase(dbName)
+        }
+    }
+
+    @Test
+    fun migrateV2ToV3KeepsSessionsAndDefaultsImportedToFalse() = runBlocking {
+        val name = "migration-2-3-test"
+        helper.createDatabase(name, 2).apply {
+            execSQL(
+                "INSERT INTO workout_plan (id, name, sourceFileName, sheetName, importedAt, isActive) " +
+                    "VALUES (1, 'Scheda', 'scheda.xlsx', 'SHEET', 1000, 1)",
+            )
+            execSQL("INSERT INTO workout_day (id, planId, name, position) VALUES (1, 1, 'FULL BODY 1', 0)")
+            execSQL(
+                "INSERT INTO planned_exercise (id, dayId, position, name, sets, targetReps, targetRir, restSeconds, notes) " +
+                    "VALUES (1, 1, 0, 'PULL UP', 3, '4-6', '1-2', 180, NULL)",
+            )
+            execSQL("INSERT INTO workout_session (id, planId, dayId, startedAt, endedAt) VALUES (1, 1, 1, 2000, 3000)")
+            execSQL(
+                "INSERT INTO set_log (id, sessionId, plannedExerciseId, setNumber, loadKg, reps, outcome, rir, completedAt) " +
+                    "VALUES (1, 1, 1, 1, 37.5, 6, 'BUFFER', 2, 2500)",
+            )
+            close()
+        }
+
+        // Runs the v2 -> v3 auto-migration and validates the result against 3.json.
+        helper.runMigrationsAndValidate(name, 3, true).close()
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).build()
+        try {
+            val sessions = SessionRepository(db)
+            val finished = sessions.observeFinishedSessions().first()
+            assertEquals(1, finished.size)
+            val session = finished.single()
+            assertEquals(false, session.imported)
+            assertTrue(session.notes.isEmpty())
+            assertEquals(1, session.sets.size)
+            assertEquals(2, session.sets[0].rir)
+            assertEquals(37.5, session.sets[0].loadKg, 0.0)
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
         }
     }
 }

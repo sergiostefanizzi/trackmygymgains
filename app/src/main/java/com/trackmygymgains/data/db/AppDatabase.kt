@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.trackmygymgains.data.db.dao.PlanDao
 import com.trackmygymgains.data.db.dao.SessionDao
+import com.trackmygymgains.data.db.entity.ExerciseNoteEntity
 import com.trackmygymgains.data.db.entity.PlannedExerciseEntity
 import com.trackmygymgains.data.db.entity.SetLogEntity
 import com.trackmygymgains.data.db.entity.WorkoutDayEntity
@@ -19,11 +20,13 @@ import com.trackmygymgains.data.db.entity.WorkoutSessionEntity
         PlannedExerciseEntity::class,
         WorkoutSessionEntity::class,
         SetLogEntity::class,
+        ExerciseNoteEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
     ],
 )
 @TypeConverters(Converters::class)

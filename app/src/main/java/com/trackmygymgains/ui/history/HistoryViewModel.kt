@@ -25,6 +25,8 @@ data class HistoryItem(
     val durationMillis: Long,
     val doneSets: Int,
     val plannedSets: Int?,
+    /** True for workouts imported from the plan file: [startedAt] is only a date and there is no real duration. */
+    val imported: Boolean = false,
 )
 
 sealed interface HistoryUiState {
@@ -52,6 +54,7 @@ class HistoryViewModel(
                     durationMillis = (session.endedAt ?: session.startedAt) - session.startedAt,
                     doneSets = session.sets.size,
                     plannedSets = day?.exercises?.sumOf { it.sets },
+                    imported = session.imported,
                 )
             },
         )
