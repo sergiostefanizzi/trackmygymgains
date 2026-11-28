@@ -92,6 +92,19 @@
     <string name="summary_set_buffer">%1$s kg × %2$d · Buffer RIR %3$d</string>
     <string name="summary_set_failure">%1$s kg × %2$d · Cedimento</string>
     <string name="summary_home">Torna alla home</string>
+    <string name="summary_back">Indietro</string>
+
+    <!-- History -->
+    <string name="home_history">Storico allenamenti</string>
+    <string name="history_title">Storico</string>
+    <string name="history_back">Indietro</string>
+    <string name="history_empty">Nessun allenamento completato</string>
+    <string name="history_sets_only">%1$d serie</string>
+    <string name="history_delete">Elimina</string>
+    <string name="history_delete_title">Eliminare l\'allenamento?</string>
+    <string name="history_delete_text">Le serie registrate verranno cancellate.</string>
+    <string name="history_delete_confirm">Elimina</string>
+    <string name="history_delete_dismiss">Annulla</string>
 
     <!-- Rest timer notifications -->
     <string name="notif_channel_rest_running">Recupero in corso</string>

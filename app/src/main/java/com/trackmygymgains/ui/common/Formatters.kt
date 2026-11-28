@@ -1,5 +1,8 @@
 package com.trackmygymgains.ui.common
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Formats a rest time in seconds as m:ss (e.g. 180 -> "3:00", 90 -> "1:30"). */
@@ -17,3 +20,12 @@ fun formatDuration(millis: Long): String {
         else -> String.format(Locale.ROOT, "%d h %02d min", totalMinutes / 60, totalMinutes % 60)
     }
 }
+
+/**
+ * Date and clock time of a workout, e.g. "ven 28 nov · 18:30" for [Locale.ITALIAN] in the device zone.
+ * Zone and locale are parameters so the output is deterministic in tests.
+ */
+fun formatSessionDateTime(epochMillis: Long, zone: ZoneId, locale: Locale): String =
+    Instant.ofEpochMilli(epochMillis).atZone(zone).format(
+        DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", locale),
+    )

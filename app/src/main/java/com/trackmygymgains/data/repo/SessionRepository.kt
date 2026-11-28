@@ -99,6 +99,21 @@ class SessionRepository(
         dao.deleteSession(sessionId)
     }
 
+    /** Finished sessions (open ones excluded), newest first by start time, with their sets ordered. */
+    fun observeFinishedSessions(): Flow<List<WorkoutSession>> =
+        dao.observeFinishedSessions().map { sessions -> sessions.map { it.toDomain() } }
+
+    /**
+     * Deletes a finished session and its sets ("Elimina" in the history). No-op for an unknown id.
+     * Throws [IllegalStateException] for an open session: open ones are discarded with [discardSession].
+     */
+    suspend fun deleteFinishedSession(sessionId: Long) = db.withTransaction {
+        val session = dao.findSession(sessionId) ?: return@withTransaction
+        check(session.endedAt != null) { "Session $sessionId is open and cannot be deleted from the history" }
+        dao.deleteSetsOfSession(sessionId)
+        dao.deleteSession(sessionId)
+    }
+
     /**
      * Sets of the most recent finished session that logged an exercise named [exerciseName]
      * (case-insensitive, trimmed), ordered by setNumber. Sessions in [excludeSessionId] are ignored.

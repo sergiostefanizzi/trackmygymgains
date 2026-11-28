@@ -56,6 +56,7 @@ class HomeScreenTest {
                 HomeScreen(
                     state = state,
                     onImportNew = { calls.imported++ },
+                    onOpenHistory = {},
                     onStartDay = { calls.started += it },
                     onResumeSession = { calls.resumed += it },
                     onCancelSession = { calls.cancelled += it },

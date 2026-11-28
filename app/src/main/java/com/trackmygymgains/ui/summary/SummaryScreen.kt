@@ -43,17 +43,23 @@ object SummaryTags {
 @Composable
 fun SummaryRoute(
     onHome: () -> Unit,
+    fromHistory: Boolean = false,
     viewModel: SummaryViewModel = viewModel(factory = SummaryViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SummaryScreen(state = state, onHome = onHome)
+    SummaryScreen(state = state, onHome = onHome, fromHistory = fromHistory)
 }
 
+/**
+ * [onHome] is the button action: "Torna alla home" after a workout, or "Indietro" (back to the history)
+ * when [fromHistory] is true.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(
     state: SummaryUiState,
     onHome: () -> Unit,
+    fromHistory: Boolean = false,
 ) {
     Scaffold(
         topBar = {
@@ -94,7 +100,9 @@ fun SummaryScreen(
                         onClick = onHome,
                         modifier = Modifier.fillMaxWidth().testTag(SummaryTags.HOME),
                     ) {
-                        Text(stringResource(R.string.summary_home))
+                        Text(
+                            stringResource(if (fromHistory) R.string.summary_back else R.string.summary_home),
+                        )
                     }
                 }
             }

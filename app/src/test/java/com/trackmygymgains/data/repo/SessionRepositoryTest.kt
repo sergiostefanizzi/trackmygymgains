@@ -269,6 +269,76 @@ class SessionRepositoryTest {
     }
 
     @Test
+    fun observeFinishedSessionsListsNewestFirstWithoutOpenSession() = runTest {
+        val plan = importReference()
+        val firstDayPullUp = plan.exerciseId("PULL UP")
+        val secondDayBanded = plan.exerciseId("BANDED PULL UP")
+        val secondDayCurl = plan.exerciseId("CURL MANUBRI")
+
+        val first = sessions.startSession(plan.days[0].id)
+        sessions.logSet(first, firstDayPullUp, 1, 30.0, 8, SetOutcome.BUFFER, 3)
+        clock.advanceMillis(60_000)
+        sessions.finishSession(first)
+
+        clock.advanceMillis(3_600_000)
+        val second = sessions.startSession(plan.days[1].id)
+        sessions.logSet(second, secondDayCurl, 2, 12.0, 6, SetOutcome.FAILURE, null)
+        sessions.logSet(second, secondDayBanded, 1, 30.0, 8, SetOutcome.BUFFER, 3)
+        sessions.logSet(second, secondDayCurl, 1, 12.0, 8, SetOutcome.BUFFER, 2)
+        clock.advanceMillis(120_000)
+        sessions.finishSession(second)
+
+        clock.advanceMillis(3_600_000)
+        sessions.startSession(plan.days[2].id) // stays open
+
+        val finished = sessions.observeFinishedSessions().first()
+        assertEquals(listOf(second, first), finished.map { it.id })
+        assertEquals(listOf(plan.days[1].id, plan.days[0].id), finished.map { it.dayId })
+        // Sets come back ordered by exercise, then set number.
+        assertEquals(
+            listOf(secondDayBanded to 1, secondDayCurl to 1, secondDayCurl to 2),
+            finished[0].sets.map { it.plannedExerciseId to it.setNumber },
+        )
+        assertEquals(1, finished[1].sets.size)
+    }
+
+    @Test
+    fun deleteFinishedSessionRemovesSessionAndSetsOnly() = runTest {
+        val plan = importReference()
+        val pullUp = plan.exerciseId("PULL UP")
+        val finishedId = sessions.startSession(plan.days[0].id)
+        sessions.logSet(finishedId, pullUp, 1, 30.0, 8, SetOutcome.BUFFER, 3)
+        sessions.logSet(finishedId, pullUp, 2, 30.0, 7, SetOutcome.FAILURE, null)
+        sessions.finishSession(finishedId)
+        val keptId = sessions.startSession(plan.days[0].id) // open, must survive
+        sessions.logSet(keptId, pullUp, 1, 30.0, 8, SetOutcome.BUFFER, 3)
+        sessions.finishSession(keptId)
+        val openId = sessions.startSession(plan.days[1].id)
+        sessions.logSet(openId, pullUp, 1, 30.0, 8, SetOutcome.BUFFER, 3)
+
+        sessions.deleteFinishedSession(finishedId)
+
+        assertEquals(listOf(keptId), sessions.observeFinishedSessions().first().map { it.id })
+        assertEquals(2, countRows("workout_session"))
+        assertEquals(2, countRows("set_log"))
+        assertEquals(openId, sessions.getOpenSession()!!.id)
+        // Unknown id is a no-op.
+        sessions.deleteFinishedSession(finishedId)
+        assertEquals(2, countRows("workout_session"))
+    }
+
+    @Test
+    fun deleteOpenSessionThrows() = runTest {
+        val plan = importReference()
+        val sessionId = sessions.startSession(plan.days[0].id)
+
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { sessions.deleteFinishedSession(sessionId) }
+        }
+        assertEquals(1, countRows("workout_session"))
+    }
+
+    @Test
     fun lastPerformancePicksMostRecentFinishedSession() = runTest {
         val plan = importReference()
         val pullUp = plan.exerciseId("PULL UP")

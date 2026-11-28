@@ -38,6 +38,11 @@ interface SessionDao {
     @Query("SELECT * FROM workout_session WHERE endedAt IS NULL LIMIT 1")
     suspend fun getOpenSession(): SessionWithSets?
 
+    /** Finished sessions, newest first. Room does not order @Relation lists, so callers sort the sets. */
+    @Transaction
+    @Query("SELECT * FROM workout_session WHERE endedAt IS NOT NULL ORDER BY startedAt DESC, id DESC")
+    fun observeFinishedSessions(): Flow<List<SessionWithSets>>
+
     @Transaction
     @Query("SELECT * FROM workout_session WHERE id = :id")
     fun observeSession(id: Long): Flow<SessionWithSets?>

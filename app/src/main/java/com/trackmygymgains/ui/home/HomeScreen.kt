@@ -50,6 +50,7 @@ import java.time.format.DateTimeFormatter
 object HomeTags {
     const val MENU = "home_menu"
     const val IMPORT_NEW = "home_import_new"
+    const val HISTORY = "home_history"
     const val LOADING = "home_loading"
     const val OPEN_SESSION = "home_open_session"
     const val RESUME = "home_resume"
@@ -65,6 +66,7 @@ object HomeTags {
 @Composable
 fun HomeRoute(
     onImportNew: () -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenWorkout: (sessionId: Long) -> Unit,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
@@ -75,6 +77,7 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onImportNew = onImportNew,
+        onOpenHistory = onOpenHistory,
         onStartDay = viewModel::startWorkout,
         onResumeSession = onOpenWorkout,
         onCancelSession = viewModel::cancelSession,
@@ -91,6 +94,7 @@ internal fun formatStartTime(epochMillis: Long): String =
 fun HomeScreen(
     state: HomeUiState,
     onImportNew: () -> Unit,
+    onOpenHistory: () -> Unit,
     onStartDay: (dayId: Long) -> Unit,
     onResumeSession: (sessionId: Long) -> Unit,
     onCancelSession: (sessionId: Long) -> Unit,
@@ -113,6 +117,14 @@ fun HomeScreen(
                                     onImportNew()
                                 },
                                 modifier = Modifier.testTag(HomeTags.IMPORT_NEW),
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.home_history)) },
+                                onClick = {
+                                    menuOpen = false
+                                    onOpenHistory()
+                                },
+                                modifier = Modifier.testTag(HomeTags.HISTORY),
                             )
                         }
                     }

@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.trackmygymgains.TrackMyGymGainsApp
+import com.trackmygymgains.ui.history.HistoryRoute
 import com.trackmygymgains.ui.home.HomeRoute
 import com.trackmygymgains.ui.importplan.ImportRoute
 import com.trackmygymgains.ui.summary.SummaryRoute
@@ -31,12 +32,18 @@ object Routes {
     const val IMPORT = "import"
     const val HOME = "home"
     const val WORKOUT = "workout/{${WorkoutViewModel.SESSION_ID_ARG}}"
-    const val SUMMARY = "summary/{${SummaryViewModel.SESSION_ID_ARG}}"
+    const val HISTORY = "history"
+    const val SUMMARY = "summary/{${SummaryViewModel.SESSION_ID_ARG}}?$FROM_HISTORY_ARG={$FROM_HISTORY_ARG}"
 
     fun workout(sessionId: Long) = "workout/$sessionId"
 
-    fun summary(sessionId: Long) = "summary/$sessionId"
+    /** [fromHistory] = true when the summary is opened from the history: its button then goes back there. */
+    fun summary(sessionId: Long, fromHistory: Boolean = false) =
+        "summary/$sessionId?$FROM_HISTORY_ARG=$fromHistory"
 }
+
+/** Optional boolean navigation argument of the summary route. */
+private const val FROM_HISTORY_ARG = "fromHistory"
 
 const val START_LOADING_TAG = "start_loading"
 
@@ -78,6 +85,7 @@ fun AppNavHost() {
         composable(Routes.HOME) {
             HomeRoute(
                 onImportNew = { navController.navigate(Routes.IMPORT) },
+                onOpenHistory = { navController.navigate(Routes.HISTORY) },
                 onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
             )
         }
@@ -95,13 +103,34 @@ fun AppNavHost() {
                 },
             )
         }
+        composable(Routes.HISTORY) {
+            HistoryRoute(
+                onBack = { navController.popBackStack() },
+                onOpenSummary = { sessionId -> navController.navigate(Routes.summary(sessionId, fromHistory = true)) },
+            )
+        }
         composable(
             route = Routes.SUMMARY,
-            arguments = listOf(navArgument(SummaryViewModel.SESSION_ID_ARG) { type = NavType.LongType }),
-        ) {
+            arguments = listOf(
+                navArgument(SummaryViewModel.SESSION_ID_ARG) { type = NavType.LongType },
+                navArgument(FROM_HISTORY_ARG) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { entry ->
+            val fromHistory = entry.arguments?.getBoolean(FROM_HISTORY_ARG) ?: false
             SummaryRoute(
+                fromHistory = fromHistory,
                 onHome = {
-                    if (!navController.popBackStack(Routes.HOME, inclusive = false)) {
+                    if (fromHistory) {
+                        // Back to the history list, which is the entry below the summary.
+                        if (!navController.popBackStack(Routes.HISTORY, inclusive = false)) {
+                            navController.navigate(Routes.HISTORY) {
+                                popUpTo(Routes.SUMMARY) { inclusive = true }
+                            }
+                        }
+                    } else if (!navController.popBackStack(Routes.HOME, inclusive = false)) {
                         navController.navigate(Routes.HOME) {
                             popUpTo(navController.graph.id) { inclusive = true }
                         }

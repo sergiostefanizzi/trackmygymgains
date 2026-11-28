@@ -25,6 +25,7 @@ import com.trackmygymgains.data.plan.ParsedPlan
 import com.trackmygymgains.testing.InMemoryContainerRule
 import com.trackmygymgains.testing.REFERENCE_SHEET_NAME
 import com.trackmygymgains.testing.referencePlanExpected
+import com.trackmygymgains.ui.history.HistoryTags
 import com.trackmygymgains.ui.home.HomeTags
 import com.trackmygymgains.ui.importplan.ImportTags
 import androidx.test.rule.GrantPermissionRule
@@ -168,6 +169,46 @@ class MainActivityWithPlanTest {
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodes(hasTestTag(WorkoutTags.REST_BANNER)).fetchSemanticsNodes().isEmpty()
         }
+    }
+
+    @Test
+    fun finishedWorkoutIsInHistoryAndSummaryFromHistoryGoesBackToIt() {
+        val start = context.getString(R.string.home_start_workout)
+        val summaryBack = context.getString(R.string.summary_back)
+        val totalSets = referencePlanExpected.first().exercises.sumOf { it.sets }
+        val summaryButtonIndex = referencePlanExpected.first().exercises.size + 1
+
+        waitForText("FULL BODY 1 · 7 esercizi")
+        composeRule.onAllNodesWithText(start).onFirst().performClick()
+        waitForText("PULL UP")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.LOAD_FIELD)).onFirst().performTextInput("80")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.REPS_FIELD)).onFirst().performTextInput("8")
+        composeRule.onAllNodes(hasTestTag(WorkoutTags.SUBMIT)).onFirst().performClick()
+        waitForText("1 · 80 kg × 8 · Buffer RIR 1")
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(referencePlanExpected.first().exercises.size)
+        composeRule.onNodeWithTag(WorkoutTags.FINISH).performClick()
+        composeRule.onNodeWithTag(WorkoutTags.FINISH_CONFIRM).performClick()
+
+        waitForText(context.getString(R.string.summary_title))
+        composeRule.onNodeWithText("1/$totalSets serie").assertIsDisplayed()
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(summaryButtonIndex)
+        composeRule.onNodeWithTag(SummaryTags.HOME).performClick()
+        waitForText("FULL BODY 1 · 7 esercizi")
+
+        composeRule.onNodeWithTag(HomeTags.MENU).performClick()
+        composeRule.onNodeWithTag(HomeTags.HISTORY).performClick()
+        waitForTag(HistoryTags.CARD)
+        composeRule.onNodeWithText("FULL BODY 1").assertIsDisplayed()
+        composeRule.onNodeWithText("1/$totalSets serie").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(HistoryTags.CARD).performClick()
+        waitForText(context.getString(R.string.summary_title))
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(summaryButtonIndex)
+        composeRule.onNodeWithText(summaryBack).assertIsDisplayed()
+        composeRule.onNodeWithTag(SummaryTags.HOME).performClick()
+
+        waitForTag(HistoryTags.CARD)
+        composeRule.onNodeWithTag(HistoryTags.CARD).assertIsDisplayed()
     }
 
     private fun waitForText(text: String) {
