@@ -89,6 +89,7 @@ fun referenceSheetXlsx(): ByteArray = XlsxTestBuilder()
                     cell(r, 9, "ok")
                 } else {
                     cell(r, 6, "0")
+                    cell(r, 7, "10 / 10")
                     cell(r, 10, "40")
                     cell(r, 11, "8 / 8 / 7")
                 }

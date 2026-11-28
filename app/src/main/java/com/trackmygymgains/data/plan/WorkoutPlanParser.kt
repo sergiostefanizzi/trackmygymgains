@@ -21,6 +21,7 @@ object WorkoutPlanParser {
     fun parse(sheet: SheetGrid): ParsedPlan {
         val warnings = mutableListOf<ParseWarning>()
         val days = mutableListOf<ParsedDay>()
+        val history = mutableListOf<ParsedHistorySession>()
         var prevEnd = -1
         var blockNo = 0
         var row = 0
@@ -34,7 +35,8 @@ object WorkoutPlanParser {
             val headerRow = row
 
             var dayName: String? = null
-            for (r in headerRow - 1 downTo maxOf(headerRow - TITLE_LOOKBACK, prevEnd + 1)) {
+            val titleFirstRow = maxOf(headerRow - TITLE_LOOKBACK, prevEnd + 1)
+            for (r in headerRow - 1 downTo titleFirstRow) {
                 val text = clean(sheet.cell(r, cols.name))
                 if (text.isNotEmpty()) {
                     dayName = text
@@ -53,12 +55,16 @@ object WorkoutPlanParser {
             }
 
             val exercises = mutableListOf<ParsedExercise>()
+            val historyRows = mutableListOf<HistoryParser.Row>()
             var r = headerRow + 1
             while (r < sheet.rowCount) {
                 if (columnsOf(sheet, r) != null) break
                 val name = clean(sheet.cell(r, cols.name))
                 if (name.isEmpty()) break
-                parseExercise(sheet, r, name, cols, warnings)?.let { exercises += it }
+                parseExercise(sheet, r, name, cols, warnings)?.let {
+                    historyRows += HistoryParser.Row(exercises.size, r, name)
+                    exercises += it
+                }
                 r++
             }
             prevEnd = r - 1
@@ -67,13 +73,17 @@ object WorkoutPlanParser {
             if (exercises.isEmpty()) {
                 warnings += ParseWarning(headerRow + 1, "Giorno \"$dayName\" ignorato: nessun esercizio valido")
             } else {
+                history += HistoryParser.parseBlock(
+                    sheet, days.size, dayName, headerRow, titleFirstRow, historyRows, warnings,
+                )
                 days += ParsedDay(dayName, exercises)
             }
         }
         if (blockNo == 0) {
             throw PlanParseException("Nessun giorno di allenamento trovato nel foglio \"${sheet.name}\"")
         }
-        return ParsedPlan(sheet.name, days, warnings)
+        val sortedHistory = history.sortedWith(compareBy({ it.date }, { it.dayIndex }))
+        return ParsedPlan(sheet.name, days, warnings, sortedHistory)
     }
 
     private fun parseExercise(
