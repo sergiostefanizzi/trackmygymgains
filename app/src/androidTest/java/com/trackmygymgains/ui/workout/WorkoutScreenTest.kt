@@ -3,6 +3,7 @@ package com.trackmygymgains.ui.workout
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -324,5 +325,54 @@ class WorkoutScreenTest {
         val jump = PlannedExercise(2, 1, "ADDUCTOR MACHINE", 2, "8-10", "1-2", null, null)
         showRest(ui(exercise = jump), RestTimerState.Running(0L, 60, 60_000L, "x"))
         rule.onNodeWithTag(WorkoutTags.REST_START_MANUAL).assertDoesNotExist()
+    }
+
+    private fun uiWithLast(
+        reps: List<Int>,
+        form: SetFormValues = SetFormValues("32,5", "8", SetOutcome.BUFFER, 1),
+    ): WorkoutUiState.Ready {
+        val ex = exercise.copy(targetReps = "6-8")
+        val sets = reps.mapIndexed { i, r -> logged(i + 1, 30.0, r, SetOutcome.BUFFER, 1) }
+        val startedAt = java.time.ZonedDateTime.now().withMonth(1).withDayOfMonth(26).withHour(12)
+            .toInstant().toEpochMilli()
+        val base = ui(exercise = ex, form = form).exercises.first()
+        return WorkoutUiState.Ready(
+            "FULL BODY 1",
+            listOf(
+                base.copy(
+                    lastPerformance = com.trackmygymgains.data.repo.LastPerformance(startedAt, sets),
+                    suggestIncrease = SetInput.shouldSuggestIncrease(ex, sets),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun lastPerformanceLineAndIncreaseHintShownWhenAllAtMax() {
+        show(uiWithLast(listOf(8, 8, 8)))
+
+        rule.onNodeWithTag(WorkoutTags.LAST_PERFORMANCE)
+            .assertTextEquals("Ultima volta · 26 gen: 30 kg × 8 / 8 / 8 · RIR 1")
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertIsDisplayed()
+        rule.onNodeWithText("Hai raggiunto il massimo delle ripetizioni: prova ad aumentare il carico (+2,5 kg)")
+            .assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("32,5")
+    }
+
+    @Test
+    fun lastPerformanceShownWithoutHintWhenBelowMax() {
+        show(uiWithLast(listOf(8, 7, 8), SetFormValues("30", "8", SetOutcome.BUFFER, 1)))
+
+        rule.onNodeWithTag(WorkoutTags.LAST_PERFORMANCE).assertIsDisplayed()
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertDoesNotExist()
+        rule.onNodeWithTag(WorkoutTags.LOAD_FIELD).assertTextContains("30")
+    }
+
+    @Test
+    fun noLastPerformanceLineWithoutHistory() {
+        show(ui())
+
+        rule.onNodeWithTag(WorkoutTags.LAST_PERFORMANCE).assertDoesNotExist()
+        rule.onNodeWithTag(WorkoutTags.INCREASE_HINT).assertDoesNotExist()
     }
 }

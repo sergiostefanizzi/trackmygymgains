@@ -258,4 +258,57 @@ class WorkoutViewModelTest {
 
         assertEquals(RestTimerState.Idle, timer.state.value)
     }
+
+    private suspend fun finishedSession(ex: PlannedExercise, reps: List<Int>, load: Double) {
+        val id = sessions.startSession(dayId)
+        reps.forEachIndexed { i, r -> sessions.logSet(id, ex.id, i + 1, load, r, SetOutcome.BUFFER, 1) }
+        sessions.finishSession(id)
+    }
+
+    @Test
+    fun exerciseCarriesLastPerformanceAndIncreaseSuggestion() = runTest {
+        val ex = exercises.first { SetInput.repsUpperBound(it.targetReps) != null }
+        val bound = SetInput.repsUpperBound(ex.targetReps)!!
+        finishedSession(ex, List(ex.sets) { bound }, 40.0)
+
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, newTimer())
+        val state = ready(vm)
+        val ui = state.exercises.first { it.exercise.id == ex.id }
+
+        assertNotNull(ui.lastPerformance)
+        assertEquals(ex.sets, ui.lastPerformance!!.sets.size)
+        assertEquals(true, ui.suggestIncrease)
+        assertEquals("42,5", ui.currentForm!!.loadText)
+        val other = state.exercises.first { it.exercise.name.trim().lowercase() != ex.name.trim().lowercase() }
+        assertNull(other.lastPerformance)
+        assertEquals(false, other.suggestIncrease)
+    }
+
+    @Test
+    fun noSuggestionWhenAnySetBelowMax() = runTest {
+        val ex = exercises.first { SetInput.repsUpperBound(it.targetReps) != null }
+        val bound = SetInput.repsUpperBound(ex.targetReps)!!
+        finishedSession(ex, List(ex.sets) { if (it == 0) bound - 1 else bound }, 40.0)
+
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, newTimer())
+        val ui = ready(vm).exercises.first { it.exercise.id == ex.id }
+
+        assertNotNull(ui.lastPerformance)
+        assertEquals(false, ui.suggestIncrease)
+        assertEquals("40", ui.currentForm!!.loadText)
+    }
+
+    @Test
+    fun loggedSetInSessionKeepsItsLoadEvenWithSuggestion() = runTest {
+        val ex = exercises.first { SetInput.repsUpperBound(it.targetReps) != null && it.sets >= 2 }
+        val bound = SetInput.repsUpperBound(ex.targetReps)!!
+        finishedSession(ex, List(ex.sets) { bound }, 40.0)
+        val vm = WorkoutViewModel(sessions.startSession(dayId), sessions, plans, newTimer())
+
+        vm.completeSet(ex.id, 1, 40.0, bound, SetOutcome.BUFFER, 1).join()
+        val ui = ready(vm) { s -> s.exercises.first { it.exercise.id == ex.id }.loggedSets.size == 1 }
+            .exercises.first { it.exercise.id == ex.id }
+
+        assertEquals("40", ui.currentForm!!.loadText)
+    }
 }

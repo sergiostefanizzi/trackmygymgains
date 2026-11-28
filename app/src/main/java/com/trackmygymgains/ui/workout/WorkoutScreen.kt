@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
+import java.time.Year
+import java.time.ZoneId
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -83,7 +86,9 @@ object WorkoutTags {
     const val FINISH_DIALOG_TEXT = "workout_finish_dialog_text"
     const val FINISH_CONFIRM = "workout_finish_confirm"
     const val FINISH_DISMISS = "workout_finish_dismiss"
-    const val REST_BANNER = "workout_rest_banner"
+    const val LAST_PERFORMANCE = "workout_last_performance"
+    const val INCREASE_HINT = "workout_increase_hint"
+    const val REST_BANNER ="workout_rest_banner"
     const val REST_LABEL = "workout_rest_label"
     const val REST_TIME = "workout_rest_time"
     const val REST_MINUS = "workout_rest_minus"
@@ -262,6 +267,40 @@ private fun ExerciseCard(
                 )
             }
             Text(targetsLine(ex), style = MaterialTheme.typography.bodyMedium)
+            ui.lastPerformance?.let { last ->
+                val labels = SetInput.LastLabels(
+                    line = stringResource(R.string.workout_last_line),
+                    loadsReps = stringResource(R.string.workout_last_loads_reps),
+                    rir = stringResource(R.string.workout_last_rir),
+                    failure = stringResource(R.string.workout_last_failure),
+                    failureShort = stringResource(R.string.workout_last_failure_short),
+                    notAvailable = stringResource(R.string.workout_last_not_available),
+                )
+                Text(
+                    SetInput.lastPerformanceLine(last, labels, ZoneId.systemDefault(), Year.now().value),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(WorkoutTags.LAST_PERFORMANCE),
+                )
+            }
+            if (ui.suggestIncrease) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.testTag(WorkoutTags.INCREASE_HINT),
+                ) {
+                    Icon(
+                        Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                    )
+                    Text(
+                        stringResource(R.string.workout_increase_hint, SetInput.formatLoad(SetInput.LOAD_INCREMENT_KG)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
             if (ex.restSeconds == null && restIdle) {
                 TextButton(
                     onClick = { onStartRest(ex.name) },

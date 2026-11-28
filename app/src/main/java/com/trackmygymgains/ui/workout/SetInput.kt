@@ -3,7 +3,12 @@ package com.trackmygymgains.ui.workout
 import com.trackmygymgains.data.model.SetOutcome
 import com.trackmygymgains.data.repo.LoggedSet
 import com.trackmygymgains.data.repo.PlannedExercise
+import com.trackmygymgains.data.repo.LastPerformance
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 enum class InputError { EMPTY, NOT_A_NUMBER, TOO_MANY_DECIMALS, OUT_OF_RANGE }
 
@@ -28,6 +33,7 @@ object SetInput {
     const val MAX_REPS = 999
     const val MAX_RIR = 10
     const val DEFAULT_RIR = 2
+    const val LOAD_INCREMENT_KG = 2.5
 
     /** Parses a load in kg: "," or "." as separator, 0..[MAX_LOAD_KG], at most 2 decimals. */
     fun parseLoad(text: String): InputResult<Double> {
@@ -77,16 +83,76 @@ object SetInput {
         setNumber: Int,
         loggedInSession: List<LoggedSet>,
         lastPerformance: List<LoggedSet>,
+        increaseLoad: Boolean = false,
     ): SetFormValues {
         val rir = defaultRir(exercise.targetRir)
         val previous = loggedInSession.filter { it.setNumber < setNumber }.maxByOrNull { it.setNumber }
-        val source = previous
-            ?: lastPerformance.firstOrNull { it.setNumber == setNumber }
+        // A set already logged in this session keeps its load: the user chose it.
+        if (previous != null) return formFrom(previous, rir)
+        val source = lastPerformance.firstOrNull { it.setNumber == setNumber }
             ?: lastPerformance.lastOrNull()
-        return source?.let { formFrom(it, rir) }
-            ?: SetFormValues("", "", SetOutcome.BUFFER, rir)
+            ?: return SetFormValues("", "", SetOutcome.BUFFER, rir)
+        val form = formFrom(source, rir)
+        return if (increaseLoad) form.copy(loadText = formatLoad(increasedLoad(source.loadKg))) else form
+    }
+
+    /** [loadKg] plus [LOAD_INCREMENT_KG], capped at [MAX_LOAD_KG]. */
+    fun increasedLoad(loadKg: Double): Double = minOf(loadKg + LOAD_INCREMENT_KG, MAX_LOAD_KG)
+
+    /** Upper bound of a rep range such as "6-8", "6–8" or "8"; null for anything else ("MAX", null). */
+    fun repsUpperBound(targetReps: String?): Int? {
+        val m = REPS_RANGE_REGEX.matchEntire(targetReps?.trim() ?: return null) ?: return null
+        return m.groupValues[2].ifEmpty { m.groupValues[1] }.toIntOrNull()
+    }
+
+    /** True when [last] covers every planned set and all of them reached the top of the rep range. */
+    fun shouldSuggestIncrease(exercise: PlannedExercise, last: List<LoggedSet>): Boolean {
+        val bound = repsUpperBound(exercise.targetReps) ?: return false
+        return last.isNotEmpty() && last.size >= exercise.sets && last.all { it.reps >= bound }
+    }
+
+    /** Localised pieces of the "Ultima volta" line (format strings use [String.format] placeholders). */
+    data class LastLabels(
+        /** args: date, loads x reps, outcome. */
+        val line: String,
+        /** args: loads, reps. */
+        val loadsReps: String,
+        /** arg: rir text. */
+        val rir: String,
+        val failure: String,
+        val failureShort: String,
+        val notAvailable: String,
+    )
+
+    /** "Ultima volta · 26 ott: 30 kg × 8 / 8 / 8 · RIR 1". The year is added only when not [currentYear]. */
+    fun lastPerformanceLine(last: LastPerformance, labels: LastLabels, zone: ZoneId, currentYear: Int): String {
+        val sets = last.sets
+        val date = Instant.ofEpochMilli(last.startedAt).atZone(zone)
+        val pattern = if (date.year == currentYear) "d MMM" else "d MMM yyyy"
+        val dateText = DateTimeFormatter.ofPattern(pattern, Locale.ITALIAN).format(date)
+
+        val loads = sets.map { formatLoad(it.loadKg) }
+        val loadsText = if (loads.distinct().size == 1) loads.first() else loads.joinToString(" / ")
+        val loadsReps = labels.loadsReps.format(loadsText, sets.joinToString(" / ") { it.reps.toString() })
+
+        val outcomes = sets.map { it.outcome to it.rir }
+        val outcomeText = if (outcomes.distinct().size == 1) {
+            if (sets.first().outcome == SetOutcome.FAILURE) {
+                labels.failure
+            } else {
+                labels.rir.format(sets.first().rir?.toString() ?: labels.notAvailable)
+            }
+        } else {
+            labels.rir.format(
+                sets.joinToString(" / ") {
+                    if (it.outcome == SetOutcome.FAILURE) labels.failureShort else it.rir?.toString() ?: labels.notAvailable
+                },
+            )
+        }
+        return labels.line.format(dateText, loadsReps, outcomeText)
     }
 
     private val LOAD_REGEX = Regex("[0-9]*[.,]?[0-9]*")
     private val REPS_REGEX = Regex("[0-9]+")
+    private val REPS_RANGE_REGEX = Regex("([0-9]+)(?:\\s*[-–—]\\s*([0-9]+))?")
 }

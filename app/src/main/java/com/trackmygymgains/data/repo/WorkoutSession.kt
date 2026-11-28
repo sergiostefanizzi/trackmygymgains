@@ -26,3 +26,6 @@ data class LoggedSet(
     val rir: Int?,
     val completedAt: Long,
 )
+
+/** Sets of the most recent finished session that logged an exercise, with that session's start time (epoch millis). */
+data class LastPerformance(val startedAt: Long, val sets: List<LoggedSet>)
